@@ -14,8 +14,8 @@ A brutalist, terminal-inspired personal portfolio built with Next.js, React Thre
 
 ## Features
 
-- Interactive 3D laptop hero with boot sequence animation
-- Terminal-inspired UI with neon accents (`#55E6C1`, `#6C5CE7`)
+- Terminal-inspired hero with typing/scanline aesthetic
+- Neon-accented brutalist UI (`#55E6C1`, `#6C5CE7`)
 - Project showcase with `OrbitCardStack` hover interactions
 - Contact form powered by FormSubmit.co
 - Fully responsive (desktop & mobile)
