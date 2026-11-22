@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#161616">
+  <meta name="description" content="Abdul-Mueez Shahid, a computer science student and developer in Peshawar. Selected work in web software, cloud infrastructure and applied AI.">
+  <title>Abdul-Mueez Shahid — Code, Cloud, Craft</title>
+  <link rel="icon" href="./assets/favicon.png">
+  <link rel="preload" href="./assets/Anton-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="./assets/field-monitor.webp" as="image">
+  <link rel="stylesheet" href="./styles/main.css">
+  <link rel="stylesheet" href="./styles/hero.css">
+  <link rel="stylesheet" href="./styles/work.css">
+  <link rel="stylesheet" href="./styles/profile.css">
+  <link rel="stylesheet" href="./styles/surface-motion.css">
+  <script type="module" src="./scripts/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#work">Skip to selected work</a>
+  <main>
+    <section class="opening" id="home" aria-labelledby="hero-title" data-hero-scene>
+      <div class="hero-frame">
+        <header class="masthead">
+          <a class="wordmark" href="#home" aria-label="Abdul-Mueez Shahid, home"><b aria-hidden="true">A<span>/</span>M</b><span class="brand-name">Abdul-Mueez Shahid</span></a>
+          <nav aria-label="Main navigation"><a href="#work">Work</a><a href="#profile">Profile</a><a href="#contact">Contact <span aria-hidden="true">↗</span></a></nav>
+        </header>
+        <div class="hero-stage" data-hero-stage>
+          <div class="hero-register"><span><i aria-hidden="true"></i> Developer portfolio</span><span>Peshawar, PK <b aria-hidden="true">/</b> <time data-local-time>UTC+5</time></span></div>
+          <h1 id="hero-title" class="hero-name"><span>Abdul-Mueez</span><span class="sr-only"> Shahid</span></h1>
+          <div class="hero-field" aria-hidden="true"></div>
+          <div class="hero-monitor">
+            <div class="monitor-shell">
+              <img src="./assets/field-monitor.webp" alt="" width="900" height="900" fetchpriority="high">
+              <div class="crt-glass">
+                <span class="bootline" aria-hidden="true">am@peshawar:~$ plot <span data-signal-name>Terrain</span></span>
+                <canvas data-monitor-screen aria-hidden="true"></canvas>
+                <span class="phosphor" aria-hidden="true"></span>
+              </div>
+            </div>
+            <button class="signal-switch" type="button" data-signal hidden aria-pressed="false" aria-label="Switch signal to waveform"><span aria-hidden="true">⇄</span> Switch signal</button>
+          </div>
+          <div class="hero-notes">
+            <p class="discipline">Code<span>.</span> Cloud<span>.</span><br>Craft<span>.</span></p>
+            <div class="hero-bio"><p>I’m Abdul-Mueez Shahid, a computer science student building web apps and working with AWS in Peshawar.</p><a href="#work">Selected work <span aria-hidden="true">↓</span></a></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="work-room" id="work" aria-labelledby="work-heading">
+      <div class="folio-measure">
+        <header class="work-mast">
+          <h2 class="folio-display" id="work-heading">Selected work</h2>
+          <a class="folio-link" href="https://github.com/abdulmueezdev">GitHub <span aria-hidden="true">↗</span></a>
+        </header>
+        <div data-project-reel>
+          <div class="reel-switch" role="tablist" aria-label="Selected projects" hidden>
+            <button type="button" id="tab-alucard" role="tab" aria-selected="true" aria-controls="project-alucard">Alucard AI</button>
+            <button type="button" id="tab-research" role="tab" aria-selected="false" aria-controls="project-research" tabindex="-1">Research Opportunity Portal</button>
+          </div>
+          <article class="folio-project" id="project-alucard" aria-labelledby="alucard-name">
+            <div class="project-plate plate-kafka">
+              <div class="kafka-type" aria-hidden="true">KAFKA</div>
+              <div class="book-prop" aria-hidden="true">
+                <div class="book-leaves">
+                  <span>PRAGUE, 1922</span>
+                  <strong>Franz<br>Kafka</strong>
+                  <i>Enter your defense…</i>
+                </div>
+                <div class="book-cover">
+                  <div class="jacket-front"><small>FRANZ KAFKA</small><strong>K.</strong><small>ALUCARD AI</small></div>
+                  <div class="jacket-back"><i>K.</i></div>
+                </div>
+              </div>
+              <button type="button" class="plate-control" data-book-toggle aria-expanded="false" aria-label="Open the Alucard book" hidden><span aria-hidden="true">+</span> <span data-book-label>Open book</span></button>
+            </div>
+            <div class="folio-caption">
+              <p class="folio-category">Conversational AI</p>
+              <h3 id="alucard-name">Alucard AI</h3>
+              <p>Ask Franz Kafka a question. Alucard retrieves passages from his writing and uses them to answer in character.</p>
+              <p class="folio-stack">Gemini embeddings · Supabase pgvector · Groq</p>
+              <div class="folio-actions">
+                <a class="folio-link" href="https://ai-bot-psi-three.vercel.app/">Talk to Kafka <span aria-hidden="true">↗</span></a>
+                <a class="folio-link secondary-link" href="https://github.com/abdulmueezdev/AI-Bot">Source code <span aria-hidden="true">↗</span></a>
+              </div>
+            </div>
+          </article>
+          <article class="folio-project" id="project-research" aria-labelledby="research-name">
+            <div class="project-plate plate-portal" aria-hidden="true">
+              <div class="portal-grid"></div>
+              <div class="portal-folder">
+                <div class="folder-back"></div>
+                <div class="folder-sheet sheet-one"><span>Faculty</span></div>
+                <div class="folder-sheet sheet-two"><span>Students</span></div>
+                <div class="folder-front"><span>Research</span><strong>Open<br>calls.</strong><i>Opportunity portal</i></div>
+              </div>
+            </div>
+            <div class="folio-caption">
+              <p class="folio-category">Academic software</p>
+              <h3 id="research-name">Research Opportunity Portal</h3>
+              <p>Students can find research projects with faculty mentors. Faculty can publish and manage their own listings.</p>
+              <p class="folio-stack">React · TypeScript · Express · MySQL</p>
+              <div class="folio-actions">
+                <a class="folio-link" href="https://github.com/abdulmueezdev/research-opportunity-portal">Explore the source <span aria-hidden="true">↗</span></a>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div class="work-index">
+          <h3>Other work</h3>
+          <div>
+            <details><summary>LeadMap<span aria-hidden="true"></span></summary><p>A lead research tool that enriches Google Places business listings with contact details and ranks them using configurable scoring rules.</p></details>
+            <details><summary>Nabeel Photographic Moments<span aria-hidden="true"></span></summary><p>A photography portfolio built around a gallery of the photographer’s work.</p></details>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="portrait-room" id="profile" aria-labelledby="profile-heading">
+      <div class="folio-measure profile-layout">
+        <figure class="profile-photo">
+          <div><img src="./assets/portrait.webp" width="900" height="1600" alt="Black-and-white side profile of Abdul-Mueez Shahid" loading="lazy"></div>
+          <figcaption><span>Abdul-Mueez Shahid</span><span>Peshawar, PK</span></figcaption>
+        </figure>
+        <div class="profile-text">
+          <h2 class="folio-display" id="profile-heading">Profile</h2>
+          <p>I’m Abdul-Mueez Shahid, a computer science student in Peshawar.</p>
+          <p>I like tracing an application from the interface back to the systems that run it. Outside my coursework, I lead the AWS Student Builder Group.</p>
+          <dl>
+            <div><dt>Education</dt><dd>BS Computer Science<br><span>FAST-NUCES Peshawar · Batch of 2024</span></dd></div>
+          </dl>
+          <a class="folio-link" href="./assets/abdulmueez-cv.pdf" download>Download CV <span aria-hidden="true">↓</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+    <footer class="contact-room" id="contact" aria-labelledby="contact-heading">
+      <div class="folio-measure">
+        <div class="contact-invite">
+          <h2 class="folio-display" id="contact-heading"><a href="mailto:abdulmueezshahid550@gmail.com">Say hello<span class="contact-arrow" aria-hidden="true">↗</span></a></h2>
+          <div class="contact-address">
+            <a href="mailto:abdulmueezshahid550@gmail.com" data-address>abdulmueezshahid550@gmail.com</a>
+            <button class="address-copy" type="button" data-copy-address aria-label="Copy email address" title="Copy email address" hidden>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="1"/><path d="M16 8V3H3v13h5"/></svg>
+            </button>
+            <span class="address-status" role="status"></span>
+          </div>
+        </div>
+        <div class="contact-ledger">
+          <nav aria-label="Social profiles"><a href="https://github.com/abdulmueezdev">GitHub ↗</a><a href="https://www.linkedin.com/in/abdulmueezdev/">LinkedIn ↗</a><a href="https://www.instagram.com/abdul.mueez.shahid/">Instagram ↗</a></nav>
+          <a href="#home">Back to top ↑</a>
+        </div>
+      </div>
+    </footer>
+</body>
+</html>
