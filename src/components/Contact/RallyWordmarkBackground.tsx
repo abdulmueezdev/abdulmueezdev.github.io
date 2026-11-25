@@ -258,6 +258,39 @@ export function RallyWordmarkBackground({ isOpen, reduceMotion, overlayRef }: Ra
     const drawFrame = () => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, height)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+
+      for (const glyph of layout.glyphs) {
+        const glyphPath = new Path2D()
+        for (const poly of glyph.strokes) {
+          if (poly.length < 2) continue
+          glyphPath.moveTo(poly[0].x, poly[0].y)
+          for (let i = 1; i < poly.length; i++) {
+            glyphPath.lineTo(poly[i].x, poly[i].y)
+          }
+        }
+
+        ctx.save()
+        ctx.translate(glyph.center.x, glyph.center.y + glyph.offsetY)
+        ctx.rotate(glyph.tilt)
+        ctx.translate(-glyph.center.x, -glyph.center.y)
+
+        const flash = glyph.hitFlash
+        const outlineR = Math.round(22 + flash * 233)
+        const outlineG = Math.round(22 + flash * 78)
+        const outlineB = Math.round(22 + flash * 32)
+        const outlineA = (0.22 + flash * 0.22).toFixed(3)
+
+        ctx.lineWidth = layout.strokeWidth + 3
+        ctx.strokeStyle = `rgba(${outlineR}, ${outlineG}, ${outlineB}, ${outlineA})`
+        ctx.stroke(glyphPath)
+
+        ctx.lineWidth = layout.strokeWidth
+        ctx.strokeStyle = '#f8f8f8'
+        ctx.stroke(glyphPath)
+        ctx.restore()
+      }
 
       // Draw Ember bouncing ball with subtle squash on impulse
       ctx.save()
