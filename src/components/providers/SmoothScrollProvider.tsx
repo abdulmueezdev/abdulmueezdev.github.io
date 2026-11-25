@@ -6,12 +6,18 @@ import 'lenis/dist/lenis.css'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
+  ScrollTrigger.config({ ignoreMobileResize: true })
 }
 
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
   const lenisRef = useRef<LenisRef>(null)
 
   useEffect(() => {
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehaviorY
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    document.body.style.overscrollBehaviorY = 'none'
+
     function update(time: number) {
       lenisRef.current?.lenis?.raf(time * 1000)
     }
@@ -27,6 +33,8 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     return () => {
       gsap.ticker.remove(update)
       lenis?.off('scroll', ScrollTrigger.update)
+      document.documentElement.style.overscrollBehaviorY = prevHtmlOverscroll
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll
     }
   }, [])
 

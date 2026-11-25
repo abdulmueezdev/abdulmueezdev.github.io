@@ -92,6 +92,13 @@ function supportsViewTransitions(): boolean {
   )
 }
 
+function prefersMobileMotionFallback(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(hover: none), (pointer: coarse), (max-width: 768px)').matches
+  )
+}
+
 function setViewTransitionStyles(css: string) {
   let styleEl = document.getElementById(VT_STYLE_ID) as HTMLStyleElement | null
   if (!styleEl) {
@@ -183,10 +190,20 @@ export function Contact() {
     [],
   )
 
+  const restoreScrollAndFocus = useCallback(() => {
+    unlockRootScroll()
+    requestAnimationFrame(() => {
+      headingTriggerRef.current?.focus({ preventScroll: true })
+    })
+  }, [unlockRootScroll])
+
   const openContact = useCallback(() => {
     lockRootScroll()
     const canTransition =
-      supportsViewTransitions() && !supportsReducedMotion() && !gifFailedRef.current
+      supportsViewTransitions() &&
+      !supportsReducedMotion() &&
+      !gifFailedRef.current &&
+      !prefersMobileMotionFallback()
 
     if (!canTransition) {
       setUsedViewTransition(false)
@@ -201,21 +218,16 @@ export function Contact() {
   }, [lockRootScroll, runViewTransition])
 
   const closeContact = useCallback(() => {
-    const restoreScrollAndFocus = () => {
-      unlockRootScroll()
-      requestAnimationFrame(() => {
-        headingTriggerRef.current?.focus({ preventScroll: true })
-      })
-    }
-
-    const canTransition = supportsViewTransitions() && !supportsReducedMotion()
+    const canTransition =
+      supportsViewTransitions() &&
+      !supportsReducedMotion() &&
+      !prefersMobileMotionFallback()
     if (!canTransition) {
       activeTransitionRef.current?.skipTransition?.()
       activeTransitionRef.current = null
       document.getElementById(VT_STYLE_ID)?.remove()
       setUsedViewTransition(false)
       setIsContactOpen(false)
-      restoreScrollAndFocus()
       return
     }
 
@@ -230,7 +242,7 @@ export function Contact() {
         restoreScrollAndFocus()
       },
     )
-  }, [runViewTransition, unlockRootScroll])
+  }, [restoreScrollAndFocus, runViewTransition])
 
   const handleCopy = useCallback(async () => {
     const address = 'abdulmueezshahid550@gmail.com'
@@ -295,6 +307,7 @@ export function Contact() {
         isOpen={isContactOpen}
         usedViewTransition={usedViewTransition}
         onClose={closeContact}
+        onAfterClose={restoreScrollAndFocus}
       />
     </footer>
   )

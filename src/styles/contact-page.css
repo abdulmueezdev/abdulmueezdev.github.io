@@ -42,10 +42,16 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  outline: none;
   padding: max(clamp(1.1rem, 3vh, 2.25rem), env(safe-area-inset-top, 0px))
     0
     max(clamp(1.1rem, 3vh, 2.25rem), env(safe-area-inset-bottom, 0px));
   font-family: var(--sans);
+}
+
+.contact-page-overlay:focus {
+  outline: none;
 }
 
 .rally-wordmark-bg {
@@ -127,6 +133,10 @@
   letter-spacing: 0.06em;
   cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+.contact-close-x {
+  display: none;
 }
 
 .contact-close-btn:hover {
@@ -547,6 +557,20 @@
   .contact-page-grid {
     grid-template-columns: 1fr;
     gap: 2rem;
+  }
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 768px) {
+  .contact-close-esc {
+    display: none;
+  }
+  .contact-close-x {
+    display: inline;
+  }
+  .contact-page-overlay {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 }
 

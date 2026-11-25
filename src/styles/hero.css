@@ -43,13 +43,13 @@
 .hero-bio a span{color:var(--ember);font-size:18px}
 @media(min-width:701px) and (max-height:720px){.hero-name{top:48px}.hero-monitor{bottom:19px}.hero-notes{bottom:27px}}
 @media(max-width:700px){
-  .masthead{height:64px;flex:0 0 64px}.masthead nav a{padding:0 12px;min-height:36px}.brand-name{display:none}
+  .masthead{height:64px;flex:0 0 64px}.masthead nav a{padding:0 11px;min-width:44px;min-height:44px;justify-content:center}.brand-name{display:none}
   .hero-stage{min-height:clamp(532px,calc(100dvh - 64px),800px);height:auto}
   .hero-register{top:22px;font-size:9px}.hero-register span{gap:5px}
   .hero-name{top:68px}
   .hero-monitor{width:clamp(225px,min(62cqw,35svh),305px);bottom:auto;top:calc(69px + 13cqw);gap:6px}
   .hero-notes{align-items:flex-end;bottom:28px;gap:12px}.discipline{font-size:clamp(33px,6.5cqw,45px)}
-  .hero-bio{width:44%;max-width:225px;font-size:13px}.hero-bio a{font-size:10px;margin-top:5px;min-height:33px}
+  .hero-bio{width:44%;max-width:225px;font-size:13px}.hero-bio a{font-size:10px;margin-top:5px;min-height:44px}
 }
-@media(max-width:400px){.masthead nav a{padding:0 10px}.hero-bio{width:46%;font-size:12px}.hero-register{font-size:8.5px}.hero-monitor{width:clamp(205px,66cqw,240px)}}
+@media(max-width:400px){.masthead nav a{padding:0 7px;font-size:10px;min-width:44px}.hero-bio{width:46%;font-size:12px}.hero-register{font-size:8.5px}.hero-monitor{width:clamp(205px,66cqw,240px)}}
 @media(prefers-reduced-motion:reduce){.monitor-shell{transition:none;transform:rotate(-4deg)}}

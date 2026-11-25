@@ -22,7 +22,7 @@ function canShowFirstVisitPreloader(): boolean {
   if (typeof window === 'undefined') return false
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false
   try {
-    return !window.localStorage.getItem(STORAGE_KEY)
+    return !window.sessionStorage.getItem(STORAGE_KEY)
   } catch {
     return false
   }
@@ -45,7 +45,7 @@ export function Preloader() {
     if (!isMounted) return
 
     try {
-      window.localStorage.setItem(STORAGE_KEY, '1')
+      window.sessionStorage.setItem(STORAGE_KEY, '1')
     } catch {
       // Ignore storage quota / private mode restrictions
     }

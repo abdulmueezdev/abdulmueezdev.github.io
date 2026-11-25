@@ -188,6 +188,7 @@
   border-bottom: 2px solid #000000;
 }
 .cncf-btn-ocg {
+  position: relative;
   background: #7DD3FC;
   color: #000000;
   border: 2px solid #000000;
@@ -310,6 +311,7 @@
   flex-wrap: wrap;
 }
 .cncf-cta-primary {
+  position: relative;
   background: #7DD3FC;
   color: #000000;
   border: 2px solid #000000;
@@ -330,6 +332,7 @@
   outline-offset: 2px;
 }
 .cncf-cta-secondary {
+  position: relative;
   background: #FFFFFF;
   color: #000000;
   border: 2px solid #000000;
@@ -435,6 +438,7 @@
   box-shadow: 1px 1px 0 #000000;
 }
 .cncf-meetup-close-btn {
+  position: relative;
   background: transparent;
   border: 0;
   font-size: 1.1rem;
@@ -569,7 +573,7 @@
   .work-mast .folio-link { margin: 0; }
   .folio-display { font-size: clamp(3rem,13.3vw,5rem); }
   .folio-project { grid-template-columns: 1fr; gap: 1.25rem; }
-  .project-plate { aspect-ratio: 1.32; }
+  .project-plate { aspect-ratio: 1.08; }
   .folio-caption h3 { font-size: clamp(2.5rem,9vw,3.7rem); margin: .5rem 0 .65rem; }
   .folio-caption .folio-stack { margin-top: .75rem; }
   .folio-actions { margin-top: .25rem; }
@@ -577,6 +581,32 @@
   .work-index h3 { padding: 1rem 0 .4rem; }
   .reel-switch { gap: 1.2rem; }
   .reel-switch button { font-size: .8rem; }
+  .cncf-nav { padding: 2% 2.8%; gap: .35rem; }
+  .cncf-nav-links { display: none; }
+  .cncf-hero-canvas { padding: 3% 3.5%; }
+  .cncf-hero-content { max-width: 72%; gap: .28rem; }
+  .cncf-subcopy { font-size: .62rem; line-height: 1.3; }
+  .cncf-mascot-speech { left: auto; right: 0; transform: none; top: -22px; font-size: .5rem; }
+  .cncf-btn-ocg { padding: .42em .78em; }
+  .cncf-cta-primary,
+  .cncf-cta-secondary { padding: .36em .68em; font-size: .58rem; }
+  .cncf-rsvp-action-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+@media (hover: none), (pointer: coarse), (max-width: 640px) {
+  .cncf-btn-ocg::after,
+  .cncf-cta-primary::after,
+  .cncf-cta-secondary::after,
+  .cncf-meetup-close-btn::after,
+  .cncf-marquee-control::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .book-cover, .book-prop, .folio-link span, .cncf-site-window { transition: none; }

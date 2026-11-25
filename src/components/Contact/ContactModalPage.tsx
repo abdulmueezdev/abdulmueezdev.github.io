@@ -8,6 +8,7 @@ interface ContactModalPageProps {
   isOpen: boolean
   usedViewTransition: boolean
   onClose: () => void
+  onAfterClose?: () => void
 }
 
 interface FormValues {
@@ -66,7 +67,12 @@ function CornerWedges({ visible, reduceMotion }: { visible: boolean; reduceMotio
   )
 }
 
-export function ContactModalPage({ isOpen, usedViewTransition, onClose }: ContactModalPageProps) {
+export function ContactModalPage({
+  isOpen,
+  usedViewTransition,
+  onClose,
+  onAfterClose,
+}: ContactModalPageProps) {
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES)
   const [errors, setErrors] = useState<FormErrors>({})
   const [focusedField, setFocusedField] = useState<FieldKey | null>(null)
@@ -77,6 +83,11 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [needsActivation, setNeedsActivation] = useState(false)
   const [submitted, setSubmitted] = useState<FormValues | null>(null)
+  const [isTouchOrMobile, setIsTouchOrMobile] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(hover: none), (pointer: coarse), (max-width: 768px)').matches
+      : false,
+  )
 
   const overlayRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -93,12 +104,22 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
 
   const shouldReduceMotion = Boolean(useReducedMotion())
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(hover: none), (pointer: coarse), (max-width: 768px)')
+    const sync = () => setIsTouchOrMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
   const triggerSequencedClose = useCallback(() => {
     if (isClosingRef.current) return
     if (shouldReduceMotion) {
       onClose()
       return
     }
+    const burstMs = isTouchOrMobile ? 120 : CLOSE_BUTTON_BURST_MS
     isClosingRef.current = true
     setIsClosing(true)
     if (closeTimeoutRef.current !== null) window.clearTimeout(closeTimeoutRef.current)
@@ -107,8 +128,8 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
       isClosingRef.current = false
       setIsClosing(false)
       onClose()
-    }, CLOSE_BUTTON_BURST_MS)
-  }, [onClose, shouldReduceMotion])
+    }, burstMs)
+  }, [isTouchOrMobile, onClose, shouldReduceMotion])
 
   // Lock root scrolling cleanly while the dialog is open
   useEffect(() => {
@@ -132,7 +153,14 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
     }
 
     const focusRaf = requestAnimationFrame(() => {
-      nameInputRef.current?.focus({ preventScroll: true })
+      const isCoarsePointer =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(hover: none), (pointer: coarse)').matches
+      if (isCoarsePointer) {
+        overlayRef.current?.focus({ preventScroll: true })
+      } else {
+        nameInputRef.current?.focus({ preventScroll: true })
+      }
     })
 
     return () => {
@@ -383,6 +411,7 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
   const skipFadeOnEnter = usedViewTransition || shouldReduceMotion
   const supportsViewTransitionClose =
     !shouldReduceMotion &&
+    !isTouchOrMobile &&
     typeof document !== 'undefined' &&
     'startViewTransition' in document &&
     typeof document.startViewTransition === 'function'
@@ -394,12 +423,41 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
       role="dialog"
       aria-modal="true"
       aria-labelledby="contact-page-heading"
+      tabIndex={-1}
       data-cursor-theme="ember"
       data-lenis-prevent
-      initial={skipFadeOnEnter ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={supportsViewTransitionClose || shouldReduceMotion ? undefined : { opacity: 0 }}
-      transition={skipFadeOnEnter ? { duration: 0 } : { duration: 0.24, ease: ENTER_EASE }}
+      initial={
+        skipFadeOnEnter
+          ? false
+          : isTouchOrMobile
+            ? { opacity: 0, clipPath: 'circle(0% at 50% 90%)' }
+            : { opacity: 0 }
+      }
+      animate={
+        isTouchOrMobile && !shouldReduceMotion
+          ? { opacity: 1, clipPath: 'circle(150% at 50% 90%)' }
+          : { opacity: 1 }
+      }
+      exit={
+        supportsViewTransitionClose
+          ? undefined
+          : shouldReduceMotion
+            ? { opacity: 0, transition: { duration: 0 } }
+            : isTouchOrMobile
+              ? {
+                  opacity: 0,
+                  clipPath: 'circle(0% at 90% 6%)',
+                  transition: { duration: 0.3, ease: [0.32, 0, 0.67, 0] },
+                }
+              : { opacity: 0 }
+      }
+      transition={
+        skipFadeOnEnter
+          ? { duration: 0 }
+          : isTouchOrMobile
+            ? { duration: 0.4, ease: ENTER_EASE }
+            : { duration: 0.24, ease: ENTER_EASE }
+      }
     >
       <RallyWordmarkBackground
         isOpen={isOpen}
@@ -441,7 +499,8 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
               >
                 <CornerWedges visible={isClosing} reduceMotion={shouldReduceMotion} />
                 <span>Close</span>
-                <span aria-hidden="true">[ESC]</span>
+                <span className="contact-close-esc" aria-hidden="true">[ESC]</span>
+                <span className="contact-close-x" aria-hidden="true">✕</span>
               </motion.button>
             </motion.header>
 
@@ -787,7 +846,11 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
   ) : null
 
   return createPortal(
-    supportsViewTransitionClose ? overlayNode : <AnimatePresence>{overlayNode}</AnimatePresence>,
+    supportsViewTransitionClose ? (
+      overlayNode
+    ) : (
+      <AnimatePresence onExitComplete={onAfterClose}>{overlayNode}</AnimatePresence>
+    ),
     document.body,
   )
 }

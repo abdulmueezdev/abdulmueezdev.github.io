@@ -35,8 +35,11 @@
   z-index: 1;
   margin: 0;
   padding-inline: 1.5rem;
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 0.68rem;
   font-family: var(--sans);
   font-weight: 500;

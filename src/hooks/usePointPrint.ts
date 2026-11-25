@@ -88,6 +88,7 @@ export function useGatherPortrait() {
     buf32: null as Uint32Array | null,
     restBuf32: null as Uint32Array | null,
     pointer: null as { x: number; y: number } | null,
+    pointerIsTouch: false,
     frame: 0,
     animating: false,
     visible: true,
@@ -116,16 +117,16 @@ export function useGatherPortrait() {
     if (!w || !h || !cw || !ch) return
 
     const reducedMotion = s.reducedMotion
-    const hasPointer = Boolean(s.pointer && s.finePointer && !reducedMotion)
+    const hasPointer = Boolean(s.pointer && !reducedMotion)
 
     // 1. Deterministic Particle Swarm Physics with Tight Localized Cursor Radius
     let activeMovement = 0
     if (s.animating && !reducedMotion) {
       const pX = s.pointer ? s.pointer.x : -9999
       const pY = s.pointer ? s.pointer.y : -9999
-      const boundRadius = 52
+      const boundRadius = s.pointerIsTouch ? 64 : 52
       const boundRadiusSq = boundRadius * boundRadius
-      const sigma = 22
+      const sigma = s.pointerIsTouch ? 26 : 22
       const twoSigmaSq = 2 * sigma * sigma
 
       for (let i = 0; i < s.count; i++) {
@@ -573,18 +574,14 @@ export function useGatherPortrait() {
       img.onload = onImageLoaded
     }
 
-    const wakeFromPointer = (e: PointerEvent) => {
-      if (!s.finePointer || s.reducedMotion) return
-      const bounds = mount.getBoundingClientRect()
-      s.pointer = { x: e.clientX - bounds.left, y: e.clientY - bounds.top }
-      s.lastPointerMs = performance.now()
-      s.settleCount = 0
-      s.animating = true
-      scheduleRender()
-    }
-
-    const onPointerLeave = () => {
+    let touchReleaseTimer = 0
+    const releasePointer = () => {
+      if (touchReleaseTimer) {
+        window.clearTimeout(touchReleaseTimer)
+        touchReleaseTimer = 0
+      }
       s.pointer = null
+      s.pointerIsTouch = false
       if (!s.reducedMotion && s.count > 0) {
         s.settleCount = 0
         s.animating = true
@@ -592,10 +589,67 @@ export function useGatherPortrait() {
       }
     }
 
+    const scheduleTouchRelease = (delayMs: number) => {
+      if (touchReleaseTimer) window.clearTimeout(touchReleaseTimer)
+      touchReleaseTimer = window.setTimeout(releasePointer, delayMs)
+    }
+
+    const wakeAtClientXY = (clientX: number, clientY: number, isTouch: boolean) => {
+      if (s.reducedMotion) return
+      if (touchReleaseTimer) {
+        window.clearTimeout(touchReleaseTimer)
+        touchReleaseTimer = 0
+      }
+      const bounds = mount.getBoundingClientRect()
+      s.pointer = { x: clientX - bounds.left, y: clientY - bounds.top }
+      s.pointerIsTouch = isTouch
+      s.lastPointerMs = performance.now()
+      s.settleCount = 0
+      s.animating = true
+      scheduleRender()
+      if (isTouch) {
+        scheduleTouchRelease(320)
+      }
+    }
+
+    const wakeFromPointer = (e: PointerEvent) => {
+      const isTouch = e.pointerType !== 'mouse'
+      if (!isTouch && !s.finePointer) return
+      wakeAtClientXY(e.clientX, e.clientY, isTouch)
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') {
+        scheduleTouchRelease(160)
+      }
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      if (!touch) return
+      wakeAtClientXY(touch.clientX, touch.clientY, true)
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      if (!touch) return
+      wakeAtClientXY(touch.clientX, touch.clientY, true)
+    }
+
+    const onTouchEnd = () => {
+      scheduleTouchRelease(160)
+    }
+
     mount.addEventListener('pointerenter', wakeFromPointer, { passive: true })
+    mount.addEventListener('pointerdown', wakeFromPointer, { passive: true })
     mount.addEventListener('pointermove', wakeFromPointer, { passive: true })
-    mount.addEventListener('pointerleave', onPointerLeave, { passive: true })
-    mount.addEventListener('pointercancel', onPointerLeave, { passive: true })
+    mount.addEventListener('pointerup', onPointerUp, { passive: true })
+    mount.addEventListener('pointerleave', releasePointer, { passive: true })
+    mount.addEventListener('pointercancel', releasePointer, { passive: true })
+    mount.addEventListener('touchstart', onTouchStart, { passive: true })
+    mount.addEventListener('touchmove', onTouchMove, { passive: true })
+    mount.addEventListener('touchend', onTouchEnd, { passive: true })
+    mount.addEventListener('touchcancel', releasePointer, { passive: true })
 
     const onVisibilityChange = () => {
       if (document.hidden && s.frame) {
@@ -651,10 +705,20 @@ export function useGatherPortrait() {
     ro.observe(mount)
 
     return () => {
+      if (touchReleaseTimer) {
+        window.clearTimeout(touchReleaseTimer)
+        touchReleaseTimer = 0
+      }
       mount.removeEventListener('pointerenter', wakeFromPointer)
+      mount.removeEventListener('pointerdown', wakeFromPointer)
       mount.removeEventListener('pointermove', wakeFromPointer)
-      mount.removeEventListener('pointerleave', onPointerLeave)
-      mount.removeEventListener('pointercancel', onPointerLeave)
+      mount.removeEventListener('pointerup', onPointerUp)
+      mount.removeEventListener('pointerleave', releasePointer)
+      mount.removeEventListener('pointercancel', releasePointer)
+      mount.removeEventListener('touchstart', onTouchStart)
+      mount.removeEventListener('touchmove', onTouchMove)
+      mount.removeEventListener('touchend', onTouchEnd)
+      mount.removeEventListener('touchcancel', releasePointer)
       motionPref.removeEventListener('change', onMediaChange)
       pointerPref.removeEventListener('change', onMediaChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)
