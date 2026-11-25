@@ -162,9 +162,9 @@ const HELLO_GLYPHS: GlyphDef[] = [
   },
 ]
 
-function buildWordmarkLayout(width: number, height: number): { glyphs: GlyphState[]; strokeWidth: number } {
-  const targetWidth = Math.min(width * 0.92, 1340)
-  const targetHeight = Math.min(height * 0.54, targetWidth * 0.44)
+function buildWordmarkLayout(width: number, height: number): { glyphs: GlyphState[]; strokeWidth: number; bodyTopY: number; bodyBottomY: number } {
+  const targetWidth = Math.min(width * 0.88, 1280)
+  const targetHeight = Math.min(height * 0.34, targetWidth * 0.28)
   const totalUnitWidth = HELLO_GLYPHS.reduce((acc, g) => acc + g.widthRatio, 0) + 0.08 * (HELLO_GLYPHS.length - 1)
   const scaleH = targetHeight
   const scaleW = targetWidth / totalUnitWidth
@@ -172,8 +172,8 @@ function buildWordmarkLayout(width: number, height: number): { glyphs: GlyphStat
 
   const totalRenderedW = totalUnitWidth * scale
   const startX = (width - totalRenderedW) * 0.5
-  const startY = Math.max(height * 0.43, height - scale * 1.04)
-  const strokeWidth = Math.max(10, Math.min(44, scale * 0.095))
+  const startY = Math.max(height * 0.61, height - scale * 1.02 - 14)
+  const strokeWidth = Math.max(10, Math.min(38, scale * 0.095))
 
   let cursorX = startX
   const glyphs: GlyphState[] = HELLO_GLYPHS.map((def, idx) => {
@@ -199,7 +199,12 @@ function buildWordmarkLayout(width: number, height: number): { glyphs: GlyphStat
     }
   })
 
-  return { glyphs, strokeWidth }
+  return {
+    glyphs,
+    strokeWidth,
+    bodyTopY: startY + scale * 0.08,
+    bodyBottomY: startY + scale * 0.98,
+  }
 }
 
 function closestPointOnSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
@@ -261,6 +266,11 @@ export function RallyWordmarkBackground({ isOpen, reduceMotion, overlayRef }: Ra
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
 
+      const onyxBodyGrad = ctx.createLinearGradient(0, layout.bodyTopY, 0, layout.bodyBottomY)
+      onyxBodyGrad.addColorStop(0, '#222124')
+      onyxBodyGrad.addColorStop(0.55, '#161616')
+      onyxBodyGrad.addColorStop(1, '#0e0e10')
+
       for (const glyph of layout.glyphs) {
         const glyphPath = new Path2D()
         for (const poly of glyph.strokes) {
@@ -276,18 +286,29 @@ export function RallyWordmarkBackground({ isOpen, reduceMotion, overlayRef }: Ra
         ctx.rotate(glyph.tilt)
         ctx.translate(-glyph.center.x, -glyph.center.y)
 
-        const flash = glyph.hitFlash
-        const outlineR = Math.round(22 + flash * 233)
-        const outlineG = Math.round(22 + flash * 78)
-        const outlineB = Math.round(22 + flash * 32)
-        const outlineA = (0.22 + flash * 0.22).toFixed(3)
+        // Pass 1: hard neo-brutalist offset shadow matching card/button elevation
+        ctx.save()
+        ctx.translate(4, 6)
+        ctx.lineWidth = layout.strokeWidth
+        ctx.strokeStyle = 'rgba(22, 22, 22, 0.14)'
+        ctx.stroke(glyphPath)
+        ctx.restore()
 
-        ctx.lineWidth = layout.strokeWidth + 3
-        ctx.strokeStyle = `rgba(${outlineR}, ${outlineG}, ${outlineB}, ${outlineA})`
+        // Pass 4 (outer rim under body so hit accent frames edges cleanly)
+        if (glyph.hitFlash > 0.01) {
+          ctx.lineWidth = layout.strokeWidth + 3
+          ctx.strokeStyle = `rgba(255, 100, 54, ${(glyph.hitFlash * 0.75).toFixed(3)})`
+          ctx.stroke(glyphPath)
+        }
+
+        // Pass 3 + Pass 2: machined top specular rim (~1.5px exposed) + sculpted matte Onyx body
+        ctx.lineWidth = layout.strokeWidth
+        ctx.strokeStyle = '#38363b'
         ctx.stroke(glyphPath)
 
-        ctx.lineWidth = layout.strokeWidth
-        ctx.strokeStyle = '#f8f8f8'
+        ctx.translate(0, 0.75)
+        ctx.lineWidth = Math.max(4, layout.strokeWidth - 1.5)
+        ctx.strokeStyle = onyxBodyGrad
         ctx.stroke(glyphPath)
         ctx.restore()
       }
