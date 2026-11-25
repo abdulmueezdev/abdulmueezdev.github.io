@@ -1,0 +1,559 @@
+/* Contact Trigger (inside #contact footer) */
+.contact-heading-trigger {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.12em;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contact-heading-trigger:hover .contact-arrow,
+.contact-heading-trigger:focus-visible .contact-arrow {
+  color: #ff6436;
+  transform: translate(3px, -3px);
+}
+
+.contact-heading-trigger:focus-visible {
+  outline: 2px solid #ff6436;
+  outline-offset: 6px;
+}
+
+/* Full-Viewport Sakuga-Inspired Editorial Contact Form Page */
+.contact-page-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: #f8f8f8;
+  color: #161616;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: max(clamp(1.1rem, 3vh, 2.25rem), env(safe-area-inset-top, 0px))
+    0
+    max(clamp(1.1rem, 3vh, 2.25rem), env(safe-area-inset-bottom, 0px));
+  font-family: var(--sans);
+}
+
+.rally-wordmark-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.rally-wordmark-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.contact-page-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: calc(1120px + clamp(2rem, 8.4vw, 7rem));
+  padding-inline: clamp(1rem, 4.2vw, 3.5rem);
+  margin-inline: auto;
+  flex-shrink: 0;
+  overflow-x: clip;
+}
+
+.contact-page-left {
+  min-width: 0;
+}
+
+.contact-page-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 2px;
+  padding-bottom: clamp(0.75rem, 1.8vh, 1.25rem);
+  border-bottom: 1.5px solid #c9c7cc;
+}
+
+.contact-page-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 15px;
+  font: 500 13px/1.2 var(--sans);
+  letter-spacing: -0.03em;
+  color: #161616;
+}
+
+/* Matches Hero masthead .wordmark b styling cleanly */
+.contact-page-wordmark {
+  font: 400 29px/1.05 var(--display);
+  letter-spacing: -0.065em;
+  color: #161616;
+}
+
+.contact-page-wordmark span {
+  color: var(--ember, #ff6436);
+  padding-inline: 1px;
+}
+
+.contact-close-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.55rem 1.05rem;
+  border: 2.5px solid #161616;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #161616;
+  box-shadow: 4px 4px 0 #161616;
+  font: 600 0.75rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+.contact-close-btn:hover {
+  background: #161616;
+  color: #f8f8f8;
+  box-shadow: 4px 4px 0 #ff6436;
+  transform: translate(-1px, -1px);
+}
+
+.contact-close-btn:active,
+.contact-close-btn.is-closing {
+  background: #ff6436;
+  color: #161616;
+  box-shadow: 2px 2px 0 #161616;
+}
+
+.contact-close-btn:focus-visible {
+  outline: 2.5px solid #ff6436;
+  outline-offset: 3px;
+}
+
+.contact-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: clamp(1.5rem, 4.4vw, 4rem);
+  align-items: start;
+  margin-top: clamp(1.35rem, 3.8vh, 3rem);
+}
+
+.contact-page-title {
+  margin: 0;
+  font: 400 clamp(3rem, 5.8vw, 5.4rem)/0.9 var(--display);
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  color: #161616;
+}
+
+.contact-page-title-line {
+  display: block;
+}
+
+.contact-page-lead {
+  margin: clamp(0.85rem, 1.9vh, 1.35rem) 0 0;
+  max-width: 34ch;
+  color: #3c3a3e;
+  font: 450 clamp(0.98rem, 1.32vw, 1.15rem)/1.45 var(--sans);
+  letter-spacing: -0.015em;
+}
+
+.contact-page-meta-list {
+  margin: clamp(1.2rem, 2.8vh, 2.15rem) 0 0;
+  padding: 0;
+  border-top: 1px solid #c9c7cc;
+}
+
+.contact-page-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: clamp(0.6rem, 1.4vh, 0.9rem) 0;
+  border-bottom: 1px solid #c9c7cc;
+}
+
+.contact-page-meta-row dt {
+  font: 600 0.68rem/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #555257;
+}
+
+.contact-page-meta-row dd {
+  margin: 0;
+  font: 500 0.95rem/1.4 var(--mono);
+  color: #161616;
+  overflow-wrap: anywhere;
+}
+
+.contact-page-meta-row a:hover {
+  color: #ff6436;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* Sakuga-Adapted Tactile Form Card */
+.sakuga-form-card {
+  position: relative;
+  background: #ffffff;
+  border: 3px solid #161616;
+  border-radius: 16px;
+  box-shadow: 7px 8px 0 #161616;
+  padding: clamp(1.35rem, 3vh, 2.35rem) clamp(1.35rem, 3.2vw, 2.4rem);
+  overflow: visible;
+}
+
+.sakuga-form-stage {
+  position: relative;
+}
+
+.sakuga-form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 1.9vh, 1.3rem);
+  transition: opacity 0.18s ease;
+}
+
+.sakuga-form.is-submitting {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sakuga-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+}
+
+.sakuga-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sakuga-label {
+  font: 600 0.76rem/1.2 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #161616;
+}
+
+.sakuga-required {
+  color: #ff6436;
+  margin-left: 0.25rem;
+}
+
+.sakuga-field-index {
+  font: 500 0.68rem/1 var(--mono);
+  color: #666465;
+}
+
+.sakuga-input-shell {
+  position: relative;
+}
+
+.sakuga-control {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 2.5px solid #161616;
+  border-radius: 12px;
+  background: #f8f8f8;
+  color: #161616;
+  box-shadow: 4px 5px 0 #c9c7cc;
+  font: 500 0.97rem/1.45 var(--sans);
+  caret-color: #ff6436;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.sakuga-control::placeholder {
+  color: #6c696d;
+}
+
+.sakuga-control:focus {
+  background: #ffffff;
+  box-shadow: 5px 6px 0 #ff6436;
+}
+
+.sakuga-control:focus-visible {
+  outline: 2px solid #ff6436;
+  outline-offset: 3px;
+}
+
+.sakuga-control.is-invalid {
+  border-color: #c92a00;
+  box-shadow: 4px 5px 0 #c92a00;
+}
+
+.sakuga-textarea {
+  min-height: clamp(98px, 13.5vh, 134px);
+  resize: vertical;
+}
+
+.sakuga-corner-ticks {
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  color: #ff6436;
+}
+
+.sakuga-error-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.sakuga-error {
+  margin: 0;
+  font: 600 0.74rem/1.35 var(--mono);
+  color: #b82500;
+}
+
+.sakuga-activation-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.85rem;
+  border: 2px solid #161616;
+  border-radius: 8px;
+  background: #f8f8f8;
+  color: #161616;
+  box-shadow: 3px 3px 0 #ff6436;
+  font: 600 0.72rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+.sakuga-activation-btn:hover {
+  background: #161616;
+  color: #f8f8f8;
+  transform: translate(-1px, -1px);
+}
+
+.sakuga-activation-btn:focus-visible {
+  outline: 2px solid #ff6436;
+  outline-offset: 3px;
+}
+
+.sakuga-activation-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.sakuga-activation-note {
+  margin: 0;
+  font: 500 0.7rem/1.35 var(--mono);
+  color: #555257;
+}
+
+.sakuga-submit-wrap {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: visible;
+}
+
+.sakuga-card-progress-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.sakuga-progress-slot {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  --sk-progress-width: min(300px, 100%);
+  --sk-ink: #161616;
+  --sk-card: #f8f8f8;
+  --sk-fill: #ff6436;
+  --sk-acc: #ff6436;
+  --sk-pri: #161616;
+  --sk-pri-ink: #f8f8f8;
+  --sk-on-pri: #f8f8f8;
+  --sk-track: #e6e4e0;
+  --sk-soft: #c9c7cc;
+  --sk-dim: #666465;
+  --sk-sh: 5px 5px 0 #161616;
+  --sk-btn-line: #161616;
+  --sk-tick: #161616;
+}
+
+.sakuga-progress-slot sakuga-progress {
+  max-width: 100%;
+}
+
+.sakuga-submit-btn {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.92rem 1.5rem;
+  border: 2.5px solid #161616;
+  border-radius: 12px;
+  background: #ff6436;
+  color: #161616;
+  box-shadow: 5px 6px 0 #161616;
+  font: 700 0.92rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+}
+
+.sakuga-submit-btn:hover:not(:disabled) {
+  box-shadow: 6px 7px 0 #161616;
+}
+
+.sakuga-submit-btn:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.sakuga-submit-btn.is-impact {
+  background: #161616;
+  color: #ff6436;
+  box-shadow: 2px 3px 0 #3c3a3e;
+}
+
+.sakuga-submit-btn:focus-visible {
+  outline: 2.5px solid #161616;
+  outline-offset: 4px;
+}
+
+/* Confirmation State inside Form Card */
+.sakuga-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0.75rem 0;
+}
+
+.sakuga-confirm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+  padding: 0.42rem 0.85rem;
+  border: 2px solid #161616;
+  border-radius: 99px;
+  background: #ff6436;
+  color: #161616;
+  font: 700 0.72rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.sakuga-confirm-title {
+  margin: 0;
+  font: 400 clamp(2rem, 4.5vw, 3rem)/0.98 var(--display);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: #161616;
+}
+
+.sakuga-confirm-copy {
+  margin: 0;
+  color: #3c3a3e;
+  font: 450 1rem/1.55 var(--sans);
+}
+
+.sakuga-confirm-summary {
+  margin: 0;
+  padding: 1rem 1.15rem;
+  border: 2px solid #161616;
+  border-radius: 12px;
+  background: #f8f8f8;
+  font: 500 0.84rem/1.5 var(--mono);
+  color: #161616;
+  overflow-wrap: anywhere;
+}
+
+.sakuga-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.sakuga-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0.75rem 1.2rem;
+  border: 2.5px solid #161616;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #161616;
+  box-shadow: 4px 5px 0 #c9c7cc;
+  font: 600 0.78rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.sakuga-action-secondary:hover {
+  box-shadow: 4px 5px 0 #161616;
+}
+
+.sakuga-action-secondary:focus-visible {
+  outline: 2.5px solid #ff6436;
+  outline-offset: 3px;
+}
+
+@media (max-width: 820px) {
+  .contact-page-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-close-btn,
+  .sakuga-form,
+  .sakuga-control,
+  .sakuga-submit-btn {
+    transition: none;
+  }
+}

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+  <defs>
+    <linearGradient id="bg-rag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c1b1f" />
+      <stop offset="100%" stop-color="#121114" />
+    </linearGradient>
+    <pattern id="dot-grid-rag" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#2c2a2f" />
+    </pattern>
+  </defs>
+
+  <rect width="400" height="500" fill="url(#bg-rag)" />
+  <rect width="400" height="500" fill="url(#dot-grid-rag)" opacity="0.75" />
+
+  <rect x="30" y="30" width="340" height="440" stroke="#2c2a2f" stroke-width="1" rx="16" />
+
+  <!-- Vector Embedding Hyperplane Space -->
+  <g transform="translate(200, 245)">
+    <!-- 3D Vector Coordinate Axes -->
+    <line x1="0" y1="0" x2="0" y2="-130" stroke="#3c3a3e" stroke-width="1.2" stroke-dasharray="4 3" />
+    <line x1="0" y1="0" x2="130" y2="65" stroke="#3c3a3e" stroke-width="1.2" stroke-dasharray="4 3" />
+    <line x1="0" y1="0" x2="-130" y2="65" stroke="#3c3a3e" stroke-width="1.2" stroke-dasharray="4 3" />
+
+    <!-- Isometric Context Hyperplanes -->
+    <polygon points="-110,-25 -25,-70 80,-35 -5,10" fill="#1b1a1f" stroke="#3c3a3e" stroke-width="1.2" opacity="0.85" />
+    <polygon points="-65,45 25,0 120,45 30,90" fill="#17161a" stroke="#3c3a3e" stroke-width="1.2" opacity="0.85" />
+
+    <!-- Context Document Nodes -->
+    <circle cx="-45" cy="-40" r="4.5" fill="#c9c7cc" />
+    <circle cx="-10" cy="-55" r="3.5" fill="#88858a" />
+    <circle cx="25" cy="-40" r="3.5" fill="#88858a" />
+    <circle cx="45" cy="-20" r="4.5" fill="#c9c7cc" />
+    <line x1="-45" y1="-40" x2="-10" y2="-55" stroke="#3c3a3e" stroke-width="1" />
+    <line x1="-10" y1="-55" x2="25" y2="-40" stroke="#3c3a3e" stroke-width="1" />
+    <line x1="25" y1="-40" x2="45" y2="-20" stroke="#3c3a3e" stroke-width="1" />
+
+    <!-- Query Vector Trajectory (Ember Laser) -->
+    <line x1="-100" y1="100" x2="15" y2="-15" stroke="#ff6436" stroke-width="2.2" />
+    <circle cx="-100" cy="100" r="5" fill="#161616" stroke="#ff6436" stroke-width="1.8" />
+
+    <!-- Retrieved Focal Context Node -->
+    <g transform="translate(15, -15)">
+      <circle cx="0" cy="0" r="18" fill="none" stroke="#ff6436" stroke-width="1.2" stroke-dasharray="3 3" />
+      <circle cx="0" cy="0" r="8" fill="#ff6436" opacity="0.35" />
+      <circle cx="0" cy="0" r="4" fill="#ff6436" />
+      <!-- Nearest Neighbor Proximity Rays -->
+      <line x1="0" y1="0" x2="-35" y2="-20" stroke="#ff6436" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="0" y1="0" x2="35" y2="-15" stroke="#ff6436" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="0" y1="0" x2="20" y2="40" stroke="#ff6436" stroke-width="1" stroke-dasharray="2 2" />
+    </g>
+  </g>
+</svg>

@@ -1,227 +1,645 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import portraitSrc from '../assets/portrait.webp'
+
+interface TrackerNode {
+  x: number
+  y: number
+  baseX: number
+  baseY: number
+  vx: number
+  vy: number
+  id: string
+  normCoords: string
+  zCoord: string
+  isActive?: boolean
+}
+
+const VOID_BG_32 = 0xff0c0b0b // #0b0b0c in little-endian ABGR (0xAABBGGRR)
+const EMBER = '#ff6436'
+
+const TRACKER_CONFIG = [
+  { id: '01', rx: 0.31, ry: 0.49, normCoords: '-0.15 -0.07', zCoord: '+0.05', isActive: true },
+  { id: '02', rx: 0.46, ry: 0.36, normCoords: '+0.06 +0.44', zCoord: '-0.01' },
+  { id: '03', rx: 0.65, ry: 0.46, normCoords: '+0.47 -0.07', zCoord: '-0.14' },
+  { id: '04', rx: 0.68, ry: 0.20, normCoords: '+0.51 +0.74', zCoord: '-0.25' },
+  { id: '05', rx: 0.33, ry: 0.58, normCoords: '-0.22 -0.70', zCoord: '-0.06' },
+  { id: '06', rx: 0.62, ry: 0.62, normCoords: '+0.35 -0.60', zCoord: '-0.12' },
+  { id: '07', rx: 0.22, ry: 0.38, normCoords: '-0.51 +0.30', zCoord: '-0.42' },
+  { id: '08', rx: 0.44, ry: 0.16, normCoords: '-0.24 +0.88', zCoord: '-0.34' },
+  { id: '09', rx: 0.58, ry: 0.37, normCoords: '+0.43 +0.17', zCoord: '-0.21' },
+]
+
+const VECTOR_LINKS: [number, number][] = [
+  [0, 1], [1, 3], [1, 8], [6, 7], [7, 0],
+  [0, 4], [4, 5], [5, 2], [2, 3], [8, 1],
+  [0, 6], [2, 8],
+]
+
+function createPrng(seed: number) {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function createTrackers(w: number, h: number): TrackerNode[] {
+  const rand = createPrng(0x243f6a88)
+  return TRACKER_CONFIG.map((cfg) => ({
+    x: cfg.rx * w,
+    y: cfg.ry * h,
+    baseX: cfg.rx * w,
+    baseY: cfg.ry * h,
+    vx: (rand() - 0.5) * 0.10,
+    vy: (rand() - 0.5) * 0.10,
+    id: cfg.id,
+    normCoords: cfg.normCoords,
+    zCoord: cfg.zCoord,
+    isActive: cfg.isActive,
+  }))
+}
 
 export function usePointPrint() {
-  const imgRef = useRef<HTMLImageElement>(null)
+  return useGatherPortrait()
+}
+
+export function useGatherPortrait() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
-  const [isPrinting, setIsPrinting] = useState(false)
   const [ready, setReady] = useState(false)
-
-  const isPrintingRef = useRef(false)
-  isPrintingRef.current = isPrinting
 
   const stateRef = useRef({
     width: 0,
     height: 0,
-    columns: 0,
-    rows: 0,
-    pitchX: 0,
-    pitchY: 0,
-    dots: null as Float32Array | null,
+    dpr: 1,
+    count: 0,
+    x: new Float32Array(0),
+    y: new Float32Array(0),
+    baseX: new Float32Array(0),
+    baseY: new Float32Array(0),
+    vx: new Float32Array(0),
+    vy: new Float32Array(0),
+    mass: new Float32Array(0),
+    swirl: new Float32Array(0),
+    color32: new Uint32Array(0),
+    imageData: null as ImageData | null,
+    buf32: null as Uint32Array | null,
+    restBuf32: null as Uint32Array | null,
     pointer: null as { x: number; y: number } | null,
     frame: 0,
-    visible: false,
-    base: null as HTMLCanvasElement | null,
-    sample: null as HTMLCanvasElement | null,
+    animating: false,
+    visible: true,
+    painted: false,
+    reducedMotion: false,
+    finePointer: false,
+    trackers: [] as TrackerNode[],
+    tick: 0,
+    settleCount: 0,
   })
 
-  const renderPrint = useCallback(() => {
+  const renderGather = useCallback(() => {
     const s = stateRef.current
     s.frame = 0
-    if (!isPrintingRef.current || !s.visible || !s.dots || !s.base || document.hidden) return
     const canvas = canvasRef.current
-    if (!canvas) return
-    const ink = canvas.getContext('2d')
-    if (!ink) return
+    if (!canvas || !s.buf32 || !s.imageData || s.count === 0) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-    ink.drawImage(s.base, 0, 0, s.width, s.height)
+    const cw = canvas.width
+    const ch = canvas.height
+    const w = s.width
+    const h = s.height
+    const dpr = s.dpr
+    if (!w || !h || !cw || !ch) return
 
-    const motionPref = matchMedia('(prefers-reduced-motion: reduce)')
-    const pointerPref = matchMedia('(hover: hover) and (pointer: fine)')
-    if (!s.pointer || motionPref.matches || !pointerPref.matches) return
+    const reducedMotion = s.reducedMotion
+    const hasPointer = Boolean(s.pointer && s.finePointer && !reducedMotion)
 
-    const radius = Math.min(s.width * 0.17, 75)
-    const left = Math.max(0, Math.floor((s.pointer.x - radius) / s.pitchX))
-    const right = Math.min(s.columns, Math.ceil((s.pointer.x + radius) / s.pitchX))
-    const top = Math.max(0, Math.floor((s.pointer.y - radius) / s.pitchY))
-    const bottom = Math.min(s.rows, Math.ceil((s.pointer.y + radius) / s.pitchY))
+    // 1. Deterministic Particle Swarm Physics with Tight Localized Cursor Radius
+    let activeMovement = 0
+    if (s.animating && !reducedMotion) {
+      const pX = s.pointer ? s.pointer.x : -9999
+      const pY = s.pointer ? s.pointer.y : -9999
+      const boundRadius = 52
+      const boundRadiusSq = boundRadius * boundRadius
+      const sigma = 22
+      const twoSigmaSq = 2 * sigma * sigma
 
-    ink.fillStyle = '#171717'
-    ink.fillRect(left * s.pitchX, top * s.pitchY, (right - left) * s.pitchX, (bottom - top) * s.pitchY)
-    ink.fillStyle = '#f6f4ec'
+      for (let i = 0; i < s.count; i++) {
+        let px = s.x[i]
+        let py = s.y[i]
+        let pvx = s.vx[i]
+        let pvy = s.vy[i]
 
-    for (let row = top; row < bottom; row++) {
-      for (let col = left; col < right; col++) {
-        const size = s.dots[row * s.columns + col]
-        if (size < 0.48) continue
-        const x = (col + 0.5) * s.pitchX
-        const y = (row + 0.5) * s.pitchY
-        const dx = x - s.pointer.x
-        const dy = y - s.pointer.y
-        const distance = Math.hypot(dx, dy)
-        const push = Math.max(0, 1 - distance / radius) ** 2 * radius * 0.23 / Math.max(1, distance)
-        ink.fillRect(x + dx * push - size / 2, y + dy * push - size / 2, size, size)
+        if (hasPointer) {
+          const dx = px - pX
+          const dy = py - pY
+          const distSq = dx * dx + dy * dy
+
+          if (distSq < boundRadiusSq) {
+            const influence = Math.exp(-distSq / twoSigmaSq)
+            const dist = Math.sqrt(distSq) + 6
+            const fRad = influence * 1.15
+            const fCurl = influence * 1.45 * s.swirl[i]
+
+            pvx += ((dx / dist) * fRad - (dy / dist) * fCurl) / s.mass[i]
+            pvy += ((dy / dist) * fRad + (dx / dist) * fCurl) / s.mass[i]
+          }
+        }
+
+        const springX = (s.baseX[i] - px) * 0.065
+        const springY = (s.baseY[i] - py) * 0.065
+
+        pvx = (pvx + springX) * 0.82
+        pvy = (pvy + springY) * 0.82
+
+        px += pvx
+        py += pvy
+
+        s.x[i] = px
+        s.y[i] = py
+        s.vx[i] = pvx
+        s.vy[i] = pvy
+
+        activeMovement += Math.abs(pvx) + Math.abs(pvy)
       }
+
+      if (!s.pointer) {
+        if (activeMovement < s.count * 0.012) {
+          s.settleCount++
+          if (s.settleCount > 6) {
+            for (let i = 0; i < s.count; i++) {
+              s.x[i] = s.baseX[i]
+              s.y[i] = s.baseY[i]
+              s.vx[i] = 0
+              s.vy[i] = 0
+            }
+            s.animating = false
+            s.settleCount = 0
+          }
+        } else {
+          s.settleCount = 0
+        }
+      }
+    }
+
+    // 2. Render complete ImageData buffer before a single putImageData blit
+    const buf = s.buf32
+    if (!s.animating && s.restBuf32 && s.restBuf32.length === buf.length) {
+      buf.set(s.restBuf32)
+    } else {
+      buf.fill(VOID_BG_32)
+      const isRetina = dpr > 1.25
+      for (let i = 0; i < s.count; i++) {
+        const bx = Math.round(s.x[i] * dpr)
+        const by = Math.round(s.y[i] * dpr)
+        if (bx >= 0 && bx < cw && by >= 0 && by < ch) {
+          const idx = by * cw + bx
+          const col = s.color32[i]
+          buf[idx] = col
+          if (isRetina) {
+            if (bx + 1 < cw) buf[idx + 1] = col
+            if (by + 1 < ch) buf[idx + cw] = col
+            if (bx + 1 < cw && by + 1 < ch) buf[idx + cw + 1] = col
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(s.imageData, 0, 0)
+    s.painted = true
+
+    // 3. Render Whisper-Thin Gather HUD Overlay (<0.1ms)
+    ctx.save()
+    ctx.scale(dpr, dpr)
+
+    // A. Perimeter Ruler Ticks
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
+    ctx.lineWidth = 0.75
+    ctx.beginPath()
+    const xStep = Math.max(14, Math.round(w / 32))
+    const yStep = Math.max(14, Math.round(h / 32))
+
+    for (let x = xStep; x < w - 2; x += xStep) {
+      const isMajor = Math.round(x / xStep) % 4 === 0
+      const tickLen = isMajor ? 6 : 3
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, tickLen)
+      ctx.moveTo(x, h)
+      ctx.lineTo(x, h - tickLen)
+    }
+    for (let y = yStep; y < h - 2; y += yStep) {
+      const isMajor = Math.round(y / yStep) % 4 === 0
+      const tickLen = isMajor ? 6 : 3
+      ctx.moveTo(0, y)
+      ctx.lineTo(tickLen, y)
+      ctx.moveTo(w, y)
+      ctx.lineTo(w - tickLen, y)
+    }
+    ctx.stroke()
+
+    // B. Corner Crosshairs (+)
+    const crossSpan = 10
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
+    ctx.lineWidth = 0.75
+    const cornerOffsets = [
+      [8, 8],
+      [w - 8, 8],
+      [8, h - 8],
+      [w - 8, h - 8],
+    ]
+    ctx.beginPath()
+    for (const [cx, cy] of cornerOffsets) {
+      ctx.moveTo(cx - crossSpan / 2, cy)
+      ctx.lineTo(cx + crossSpan / 2, cy)
+      ctx.moveTo(cx, cy - crossSpan / 2)
+      ctx.lineTo(cx, cy + crossSpan / 2)
+    }
+    ctx.stroke()
+
+    // C. Tracker micro-drift only when actively interacting
+    if (s.animating && !reducedMotion) {
+      s.tick++
+      for (const t of s.trackers) {
+        t.x += t.vx
+        t.y += t.vy
+        if (hasPointer && s.pointer) {
+          const tdx = t.x - s.pointer.x
+          const tdy = t.y - s.pointer.y
+          const tdist = Math.hypot(tdx, tdy)
+          if (tdist < 52) {
+            const tpush = (1 - tdist / 52) * 2.0
+            t.x += (tdx / Math.max(1, tdist)) * tpush * 0.1
+            t.y += (tdy / Math.max(1, tdist)) * tpush * 0.1
+          }
+        }
+        const dx = t.x - t.baseX
+        const dy = t.y - t.baseY
+        if (Math.abs(dx) > 6) t.vx = -t.vx * 0.85
+        if (Math.abs(dy) > 6) t.vy = -t.vy * 0.85
+      }
+    }
+
+    // D. Vector Connecting Lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)'
+    ctx.lineWidth = 0.75
+    ctx.beginPath()
+    for (const [fromIdx, toIdx] of VECTOR_LINKS) {
+      const a = s.trackers[fromIdx]
+      const b = s.trackers[toIdx]
+      if (a && b) {
+        ctx.moveTo(a.x, a.y)
+        ctx.lineTo(b.x, b.y)
+      }
+    }
+    ctx.stroke()
+
+    // E. Tracking Boxes with Corner Brackets
+    const bSpan = 11
+    const bArm = 4.5
+    for (let i = 0; i < s.trackers.length; i++) {
+      const t = s.trackers[i]
+      const isActive = t.isActive
+
+      ctx.strokeStyle = isActive ? 'rgba(255, 100, 54, 0.85)' : 'rgba(255, 255, 255, 0.45)'
+      ctx.lineWidth = 0.85
+      ctx.beginPath()
+      ctx.moveTo(t.x - bSpan, t.y - bSpan + bArm)
+      ctx.lineTo(t.x - bSpan, t.y - bSpan)
+      ctx.lineTo(t.x - bSpan + bArm, t.y - bSpan)
+      ctx.moveTo(t.x + bSpan - bArm, t.y - bSpan)
+      ctx.lineTo(t.x + bSpan, t.y - bSpan)
+      ctx.lineTo(t.x + bSpan + bArm, t.y - bSpan)
+      ctx.moveTo(t.x - bSpan, t.y + bSpan - bArm)
+      ctx.lineTo(t.x - bSpan, t.y + bSpan)
+      ctx.lineTo(t.x - bSpan + bArm, t.y + bSpan)
+      ctx.moveTo(t.x + bSpan - bArm, t.y + bSpan)
+      ctx.lineTo(t.x + bSpan, t.y + bSpan)
+      ctx.lineTo(t.x + bSpan, t.y + bSpan - bArm)
+      ctx.stroke()
+
+      if (isActive) {
+        ctx.fillStyle = EMBER
+        ctx.fillRect(t.x - 1, t.y - 1, 2, 2)
+      } else {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
+        ctx.lineWidth = 0.75
+        ctx.beginPath()
+        ctx.moveTo(t.x - 2, t.y)
+        ctx.lineTo(t.x + 2, t.y)
+        ctx.moveTo(t.x, t.y - 2)
+        ctx.lineTo(t.x, t.y + 2)
+        ctx.stroke()
+      }
+
+      const label = `${t.id} ${t.normCoords} ${t.zCoord}`
+      ctx.font = '500 9px "IBM Plex Mono", monospace'
+      ctx.fillStyle = isActive ? 'rgba(255, 120, 80, 0.90)' : 'rgba(255, 255, 255, 0.65)'
+      ctx.fillText(label, t.x + bSpan + 4, t.y + 3)
+    }
+
+    // F. Floating Telemetry
+    ctx.font = '500 8.5px "IBM Plex Mono", monospace'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.38)'
+    ctx.fillText('01 / 01  PORTRAIT', 12, 16)
+    ctx.fillText('DRIFT 40', w - 58, 16)
+    ctx.fillText('524,288 PTS', 12, h - 10)
+    ctx.fillText('TRACK+LINKS+MARKS', w - 105, h - 10)
+
+    ctx.restore()
+
+    if (!reducedMotion && s.visible && !document.hidden && s.animating) {
+      s.frame = requestAnimationFrame(renderGather)
     }
   }, [])
 
-  const schedulePrint = useCallback(() => {
+  const scheduleRender = useCallback(() => {
     const s = stateRef.current
-    if (!s.frame && isPrintingRef.current && s.visible && !document.hidden) {
-      s.frame = requestAnimationFrame(renderPrint)
+    if (!s.frame && s.visible && !document.hidden) {
+      s.frame = requestAnimationFrame(renderGather)
     }
-  }, [renderPrint])
+  }, [renderGather])
 
-  const prepare = useCallback(() => {
-    const img = imgRef.current
+  const prepare = useCallback((img: HTMLImageElement) => {
     const mount = frameRef.current
     const canvas = canvasRef.current
     const s = stateRef.current
-    if (!s.visible || !img || !img.naturalWidth || !mount || !canvas) return
+    if (!mount || !canvas || !img.naturalWidth) return
 
-    const w = mount.clientWidth
-    const h = mount.clientHeight
-    if (!w || !h || (s.width === w && s.height === h && s.dots)) return
+    const w = Math.round(mount.clientWidth || 440)
+    const h = Math.round(mount.clientHeight || Math.round(w / 0.91))
+    if (!w || !h) return
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const cw = Math.round(w * dpr)
+    const ch = Math.round(h * dpr)
+
+    // Guard against redundant sub-pixel ResizeObserver calls that would otherwise wipe the canvas
+    if (
+      s.count > 0 &&
+      s.width === w &&
+      s.height === h &&
+      s.dpr === dpr &&
+      canvas.width === cw &&
+      canvas.height === ch
+    ) {
+      return
+    }
 
     s.width = w
     s.height = h
-    const pitch = Math.max(2.8, w / 158)
-    s.columns = Math.max(1, Math.round(w / pitch))
-    s.rows = Math.max(1, Math.round(h / pitch))
-    s.pitchX = w / s.columns
-    s.pitchY = h / s.rows
+    s.dpr = dpr
 
-    if (!s.sample) s.sample = document.createElement('canvas')
-    s.sample.width = s.columns
-    s.sample.height = s.rows
-    const sampler = s.sample.getContext('2d', { willReadFrequently: true })
-    if (!sampler) return
+    if (canvas.width !== cw) canvas.width = cw
+    if (canvas.height !== ch) canvas.height = ch
+
+    const sampleCanvas = document.createElement('canvas')
+    sampleCanvas.width = w
+    sampleCanvas.height = h
+    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true })
+    if (!sampleCtx) return
 
     const cover = Math.max(w / img.naturalWidth, h / img.naturalHeight)
     const fitW = img.naturalWidth * cover
     const fitH = img.naturalHeight * cover
-    const pos = getComputedStyle(img).objectPosition.split(' ').map(parseFloat)
-    const offX = (w - fitW) * (pos[0] / 100)
-    const offY = (h - fitH) * (pos[1] / 100)
-    sampler.drawImage(img, offX / s.pitchX, offY / s.pitchY, fitW / s.pitchX, fitH / s.pitchY)
+    const offX = (w - fitW) * 0.5
+    const offY = (h - fitH) * 0.67
+    sampleCtx.drawImage(img, offX, offY, fitW, fitH)
 
     let pixels: Uint8ClampedArray
     try {
-      pixels = sampler.getImageData(0, 0, s.columns, s.rows).data
+      pixels = sampleCtx.getImageData(0, 0, w, h).data
     } catch {
       setReady(false)
       return
     }
 
-    if (!s.base) s.base = document.createElement('canvas')
-    const ratio = Math.min(window.devicePixelRatio || 1, 2)
-    canvas.width = s.base.width = Math.round(w * ratio)
-    canvas.height = s.base.height = Math.round(h * ratio)
+    const pitch = 1.35
+    const cols = Math.round(w / pitch)
+    const rows = Math.round(h / pitch)
+    const maxParticles = cols * rows
 
-    const plate = s.base.getContext('2d')
-    const ink = canvas.getContext('2d')
-    if (!plate || !ink) return
+    const tempX = new Float32Array(maxParticles)
+    const tempY = new Float32Array(maxParticles)
+    const tempColor = new Uint32Array(maxParticles)
+    const tempMass = new Float32Array(maxParticles)
+    const tempSwirl = new Float32Array(maxParticles)
 
-    plate.setTransform(canvas.width / w, 0, 0, canvas.height / h, 0, 0)
-    ink.setTransform(canvas.width / w, 0, 0, canvas.height / h, 0, 0)
-    plate.fillStyle = '#171717'
-    plate.fillRect(0, 0, w, h)
-    plate.fillStyle = '#f6f4ec'
+    const rand = createPrng(0x9e3779b9)
+    let count = 0
 
-    s.dots = new Float32Array(s.columns * s.rows)
-    for (let i = 0; i < s.dots.length; i++) {
-      const p = i * 4
-      const light = (pixels[p] * 0.2126 + pixels[p + 1] * 0.7152 + pixels[p + 2] * 0.0722) / 255
-      const size = pitch * Math.sqrt(Math.max(0, (light - 0.04) * 1.15))
-      s.dots[i] = size
-      if (size < 0.48) continue
-      const col = i % s.columns
-      const row = Math.floor(i / s.columns)
-      plate.fillRect((col + 0.5) * s.pitchX - size / 2, (row + 0.5) * s.pitchY - size / 2, size, size)
+    const getLum = (sx: number, sy: number) => {
+      const clx = Math.min(w - 1, Math.max(0, sx))
+      const cly = Math.min(h - 1, Math.max(0, sy))
+      const idx = (cly * w + clx) * 4
+      return (pixels[idx] * 0.2126 + pixels[idx + 1] * 0.7152 + pixels[idx + 2] * 0.0722) / 255
     }
 
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const jx = (c + 0.08 + rand() * 0.84) * pitch
+        const jy = (r + 0.08 + rand() * 0.84) * pitch
+
+        const sx = Math.floor(jx)
+        const sy = Math.floor(jy)
+        if (sx < 0 || sx >= w || sy < 0 || sy >= h) continue
+
+        const lum = getLum(sx, sy)
+        const lumL = getLum(sx - 1, sy)
+        const lumR = getLum(sx + 1, sy)
+        const lumU = getLum(sx, sy - 1)
+        const lumD = getLum(sx, sy + 1)
+        const edge = Math.abs(lumR - lumL) + Math.abs(lumD - lumU)
+
+        let prob = 0.86
+        if (lum > 0.4) {
+          prob = 0.95
+        } else if (lum < 0.08) {
+          prob = 0.70
+        }
+
+        if (rand() <= prob) {
+          tempX[count] = jx
+          tempY[count] = jy
+
+          const tonal = Math.min(1, Math.max(0, Math.pow(lum, 0.88) * 1.05 + edge * 0.22))
+          const rCol = Math.round(11 + (242 - 11) * tonal)
+          const gCol = Math.round(11 + (242 - 11) * tonal)
+          const bCol = Math.round(12 + (238 - 12) * tonal)
+          tempColor[count] = (0xff << 24) | (bCol << 16) | (gCol << 8) | rCol
+
+          tempMass[count] = 0.85 + rand() * 0.55
+          tempSwirl[count] = (rand() > 0.5 ? 1 : -1) * (0.8 + rand() * 0.6)
+          count++
+        }
+      }
+    }
+
+    s.count = count
+    s.x = new Float32Array(count)
+    s.y = new Float32Array(count)
+    s.baseX = new Float32Array(count)
+    s.baseY = new Float32Array(count)
+    s.vx = new Float32Array(count)
+    s.vy = new Float32Array(count)
+    s.mass = new Float32Array(count)
+    s.swirl = new Float32Array(count)
+    s.color32 = new Uint32Array(count)
+
+    for (let i = 0; i < count; i++) {
+      s.x[i] = s.baseX[i] = tempX[i]
+      s.y[i] = s.baseY[i] = tempY[i]
+      s.color32[i] = tempColor[i]
+      s.mass[i] = tempMass[i]
+      s.swirl[i] = tempSwirl[i]
+    }
+
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      s.imageData = ctx.createImageData(cw, ch)
+      s.buf32 = new Uint32Array(s.imageData.data.buffer)
+      const rest = new Uint32Array(cw * ch)
+      rest.fill(VOID_BG_32)
+      const isRetina = dpr > 1.25
+      for (let i = 0; i < count; i++) {
+        const bx = Math.round(s.baseX[i] * dpr)
+        const by = Math.round(s.baseY[i] * dpr)
+        if (bx >= 0 && bx < cw && by >= 0 && by < ch) {
+          const idx = by * cw + bx
+          const col = s.color32[i]
+          rest[idx] = col
+          if (isRetina) {
+            if (bx + 1 < cw) rest[idx + 1] = col
+            if (by + 1 < ch) rest[idx + cw] = col
+            if (bx + 1 < cw && by + 1 < ch) rest[idx + cw + 1] = col
+          }
+        }
+      }
+      s.restBuf32 = rest
+    }
+
+    s.trackers = createTrackers(w, h)
+    s.animating = false
+    s.painted = false
     setReady(true)
-    if (isPrintingRef.current) renderPrint()
-  }, [renderPrint])
+    renderGather()
+  }, [renderGather])
 
   useEffect(() => {
     const mount = frameRef.current
-    const img = imgRef.current
-    if (!mount || !img) return
+    const canvas = canvasRef.current
+    if (!mount || !canvas) return
 
     const s = stateRef.current
     const motionPref = matchMedia('(prefers-reduced-motion: reduce)')
+    const pointerPref = matchMedia('(hover: hover) and (pointer: fine)')
+    s.reducedMotion = motionPref.matches
+    s.finePointer = pointerPref.matches
+
+    const onMediaChange = () => {
+      s.reducedMotion = motionPref.matches
+      s.finePointer = pointerPref.matches
+      if (s.reducedMotion && s.frame) {
+        cancelAnimationFrame(s.frame)
+        s.frame = 0
+        s.animating = false
+        renderGather()
+      }
+    }
+    motionPref.addEventListener('change', onMediaChange)
+    pointerPref.addEventListener('change', onMediaChange)
+
+    let img: HTMLImageElement | null = new Image()
+    img.src = portraitSrc
+
+    const onImageLoaded = () => {
+      if (!img) return
+      prepare(img)
+    }
+
+    if (img.complete && img.naturalWidth) {
+      prepare(img)
+    } else {
+      img.onload = onImageLoaded
+    }
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!isPrintingRef.current || motionPref.matches) return
       const bounds = mount.getBoundingClientRect()
       s.pointer = { x: e.clientX - bounds.left, y: e.clientY - bounds.top }
-      schedulePrint()
+      s.animating = true
+      scheduleRender()
     }
 
     const onPointerLeave = () => {
       s.pointer = null
-      schedulePrint()
+      s.animating = true
+      scheduleRender()
     }
 
-    const onMotionChange = () => {
-      s.pointer = null
-      schedulePrint()
-    }
+    mount.addEventListener('pointermove', onPointerMove, { passive: true })
+    mount.addEventListener('pointerleave', onPointerLeave, { passive: true })
 
-    mount.addEventListener('pointermove', onPointerMove)
-    mount.addEventListener('pointerleave', onPointerLeave)
-    motionPref.addEventListener('change', onMotionChange)
+    const onVisibilityChange = () => {
+      if (document.hidden && s.frame) {
+        cancelAnimationFrame(s.frame)
+        s.frame = 0
+      } else if (!document.hidden && s.visible && s.animating) {
+        scheduleRender()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     const io = new IntersectionObserver(([entry]) => {
       s.visible = entry.isIntersecting
-      s.pointer = null
       if (s.visible) {
-        prepare()
-        schedulePrint()
+        if (s.count === 0 && img && img.naturalWidth) {
+          prepare(img)
+        } else if (!s.painted || s.animating) {
+          renderGather()
+        }
       } else {
-        cancelAnimationFrame(s.frame)
-        s.frame = 0
+        if (s.frame) {
+          cancelAnimationFrame(s.frame)
+          s.frame = 0
+        }
+        s.animating = false
       }
     })
     io.observe(mount)
 
-    const ro = new ResizeObserver(prepare)
+    const ro = new ResizeObserver((entries) => {
+      if (!img || !img.naturalWidth) return
+      const entry = entries[0]
+      const w = Math.round(entry?.contentRect.width || mount.clientWidth || 0)
+      const h = Math.round(entry?.contentRect.height || mount.clientHeight || 0)
+      if (!w || !h) return
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const cw = Math.round(w * dpr)
+      const ch = Math.round(h * dpr)
+      if (s.count > 0 && canvas.width === cw && canvas.height === ch && s.width === w && s.height === h) {
+        return
+      }
+      prepare(img)
+    })
     ro.observe(mount)
-
-    if (img.complete) {
-      prepare()
-    } else {
-      img.addEventListener('load', prepare, { once: true })
-    }
 
     return () => {
       mount.removeEventListener('pointermove', onPointerMove)
       mount.removeEventListener('pointerleave', onPointerLeave)
-      motionPref.removeEventListener('change', onMotionChange)
+      motionPref.removeEventListener('change', onMediaChange)
+      pointerPref.removeEventListener('change', onMediaChange)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       io.disconnect()
       ro.disconnect()
-      cancelAnimationFrame(s.frame)
-    }
-  }, [prepare, schedulePrint])
-
-  const togglePrint = useCallback(() => {
-    setIsPrinting(prev => {
-      const next = !prev
-      stateRef.current.pointer = null
-      if (next) {
-        requestAnimationFrame(renderPrint)
+      if (s.frame) {
+        cancelAnimationFrame(s.frame)
+        s.frame = 0
       }
-      return next
-    })
-  }, [renderPrint])
+      img = null
+    }
+  }, [prepare, scheduleRender, renderGather])
 
-  return {
-    imgRef,
-    canvasRef,
-    frameRef,
-    isPrinting,
-    ready,
-    togglePrint,
-  }
+  return { canvasRef, frameRef, ready }
 }

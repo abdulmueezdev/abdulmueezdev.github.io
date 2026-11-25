@@ -1,7 +1,195 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { flushSync } from 'react-dom'
+import { useLenis } from 'lenis/react'
+import { ContactModalPage } from './ContactModalPage'
+import '../../styles/contact-page.css'
+
+const SKIPER26_GIF_1_URL =
+  'https://media.giphy.com/media/KBbr4hHl9DSahKvInO/giphy.gif?cid=790b76112m5eeeydoe7et0cr3j3ekb1erunxozyshuhxx2vl&ep=v1_stickers_search&rid=giphy.gif&ct=s'
+
+const VT_STYLE_ID = 'contact-view-transition-styles'
+
+const SKIPER26_GIF_CSS = `
+::view-transition-group(root) {
+  animation-duration: 3s;
+  animation-timing-function: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+::view-transition-new(root) {
+  mask: url('${SKIPER26_GIF_1_URL}') center / 0 no-repeat;
+  animation: contact-gif-scale 3s both;
+}
+
+::view-transition-old(root) {
+  animation: contact-gif-scale 3s both;
+}
+
+@keyframes contact-gif-scale {
+  0% {
+    mask-size: 0;
+  }
+  10% {
+    mask-size: 50vmax;
+  }
+  90% {
+    mask-size: 50vmax;
+  }
+  100% {
+    mask-size: 2000vmax;
+  }
+}
+`
+
+const SKIPER26_CIRCLE_CLOSE_CSS = `
+::view-transition-group(root) {
+  animation-duration: 1.7s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-new(root) {
+  animation: contact-circle-close 1.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+::view-transition-old(root) {
+  animation: none;
+  z-index: -1;
+}
+
+@keyframes contact-circle-close {
+  from {
+    clip-path: circle(0% at 50% 50%);
+  }
+  to {
+    clip-path: circle(150% at 50% 50%);
+  }
+}
+`
+
+function supportsReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+function supportsViewTransitions(): boolean {
+  return (
+    typeof document !== 'undefined' &&
+    'startViewTransition' in document &&
+    typeof document.startViewTransition === 'function'
+  )
+}
+
+function setViewTransitionStyles(css: string) {
+  let styleEl = document.getElementById(VT_STYLE_ID) as HTMLStyleElement | null
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = VT_STYLE_ID
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = css
+}
 
 export function Contact() {
   const [copyStatus, setCopyStatus] = useState('')
+  const [isContactOpen, setIsContactOpen] = useState(false)
+  const [usedViewTransition, setUsedViewTransition] = useState(false)
+
+  const gifFailedRef = useRef(false)
+  const gifPreloadedRef = useRef(false)
+  const headingTriggerRef = useRef<HTMLButtonElement>(null)
+  const activeTransitionRef = useRef<ViewTransition | null>(null)
+  const lenis = useLenis()
+
+  const preloadGif = useCallback(() => {
+    if (typeof window === 'undefined' || gifPreloadedRef.current) return
+    gifPreloadedRef.current = true
+    const img = new Image()
+    img.onload = () => {
+      gifFailedRef.current = false
+    }
+    img.onerror = () => {
+      gifFailedRef.current = true
+    }
+    img.src = SKIPER26_GIF_1_URL
+  }, [])
+
+  useEffect(() => {
+    preloadGif()
+    return () => {
+      activeTransitionRef.current?.skipTransition?.()
+      activeTransitionRef.current = null
+      document.getElementById(VT_STYLE_ID)?.remove()
+    }
+  }, [preloadGif])
+
+  const runViewTransition = useCallback(
+    (css: string, commitDom: () => void, afterFinish?: () => void) => {
+      activeTransitionRef.current?.skipTransition?.()
+      setViewTransitionStyles(css)
+      const transition = document.startViewTransition(() => {
+        flushSync(commitDom)
+      })
+      activeTransitionRef.current = transition
+      transition.finished.finally(() => {
+        if (activeTransitionRef.current === transition) {
+          activeTransitionRef.current = null
+          document.getElementById(VT_STYLE_ID)?.remove()
+          afterFinish?.()
+        }
+      })
+    },
+    [],
+  )
+
+  const openContact = useCallback(() => {
+    const canTransition =
+      supportsViewTransitions() && !supportsReducedMotion() && !gifFailedRef.current
+
+    if (!canTransition) {
+      setUsedViewTransition(false)
+      setIsContactOpen(true)
+      return
+    }
+
+    runViewTransition(SKIPER26_GIF_CSS, () => {
+      setUsedViewTransition(true)
+      setIsContactOpen(true)
+    })
+  }, [runViewTransition])
+
+  const closeContact = useCallback(() => {
+    const restoreScrollAndFocus = () => {
+      document.body.style.overflow = ''
+      lenis?.start()
+      requestAnimationFrame(() => {
+        headingTriggerRef.current?.focus({ preventScroll: true })
+      })
+    }
+
+    const canTransition = supportsViewTransitions() && !supportsReducedMotion()
+    if (!canTransition) {
+      activeTransitionRef.current?.skipTransition?.()
+      activeTransitionRef.current = null
+      document.getElementById(VT_STYLE_ID)?.remove()
+      setUsedViewTransition(false)
+      setIsContactOpen(false)
+      restoreScrollAndFocus()
+      return
+    }
+
+    runViewTransition(
+      SKIPER26_CIRCLE_CLOSE_CSS,
+      () => {
+        setUsedViewTransition(true)
+        setIsContactOpen(false)
+      },
+      () => {
+        setUsedViewTransition(false)
+      },
+    )
+    restoreScrollAndFocus()
+  }, [lenis, runViewTransition])
 
   const handleCopy = useCallback(async () => {
     const address = 'abdulmueezshahid550@gmail.com'
@@ -16,13 +204,22 @@ export function Contact() {
   const canCopy = typeof navigator !== 'undefined' && !!navigator.clipboard?.writeText
 
   return (
-    <footer className="contact-room" id="contact" aria-labelledby="contact-heading">
+    <footer className="contact-room" id="contact" data-cursor-theme="dark" aria-labelledby="contact-heading">
       <div className="folio-measure">
         <div className="contact-invite">
           <h2 className="folio-display" id="contact-heading">
-            <a href="mailto:abdulmueezshahid550@gmail.com">
+            <button
+              ref={headingTriggerRef}
+              type="button"
+              className="contact-heading-trigger"
+              onMouseEnter={preloadGif}
+              onFocus={preloadGif}
+              onClick={openContact}
+              aria-haspopup="dialog"
+              aria-expanded={isContactOpen}
+            >
               Say hello<span className="contact-arrow" aria-hidden="true">↗</span>
-            </a>
+            </button>
           </h2>
           <div className="contact-address">
             <a href="mailto:abdulmueezshahid550@gmail.com">abdulmueezshahid550@gmail.com</a>
@@ -52,6 +249,12 @@ export function Contact() {
           <a href="#home">Back to top ↑</a>
         </div>
       </div>
+
+      <ContactModalPage
+        isOpen={isContactOpen}
+        usedViewTransition={usedViewTransition}
+        onClose={closeContact}
+      />
     </footer>
   )
 }

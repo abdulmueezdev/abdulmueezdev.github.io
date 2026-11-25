@@ -4,6 +4,7 @@ import App from './App'
 import './styles/main.css'
 import './styles/hero.css'
 import './styles/work.css'
+import './styles/skills.css'
 import './styles/profile.css'
 import './styles/surface-motion.css'
 

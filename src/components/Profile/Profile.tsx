@@ -1,57 +1,44 @@
-import { usePointPrint } from '../../hooks/usePointPrint'
-import portrait from '../../assets/portrait.webp'
+import { useGatherPortrait } from '../../hooks/usePointPrint'
 import cvPdf from '../../assets/abdulmueez-cv.pdf'
 
 export function Profile() {
-  const { imgRef, canvasRef, frameRef, isPrinting, ready, togglePrint } = usePointPrint()
+  const { canvasRef, frameRef } = useGatherPortrait()
 
   return (
-    <section className="portrait-room" id="profile" aria-labelledby="profile-heading">
+    <section className="portrait-room" id="profile" data-cursor-theme="ember" aria-labelledby="profile-heading">
       <div className="folio-measure profile-layout">
         <figure className="profile-photo">
           <div
-            className={`point-frame${isPrinting ? ' printing-points' : ''}`}
+            className="gather-frame"
             ref={frameRef}
+            role="img"
+            aria-label="Abdul Mueez — Gather interactive point-cloud portrait"
           >
-            <img
-              ref={imgRef}
-              src={portrait}
-              width={900}
-              height={1600}
-              alt="Black-and-white side profile of Abdul-Mueez Shahid"
-              loading="lazy"
-            />
+            {/* Gather stochastic point-cloud + whisper-thin HUD overlay */}
             <canvas
-              id="profile-point-print"
-              className="point-print"
               ref={canvasRef}
+              className="gather-overlay"
               aria-hidden="true"
             />
-            {ready && (
-              <button
-                type="button"
-                className="point-switch"
-                aria-pressed={isPrinting}
-                aria-controls="profile-point-print"
-                onClick={togglePrint}
-              >
-                Point print
-              </button>
-            )}
           </div>
           <figcaption>
-            <span>Abdul-Mueez Shahid</span>
-            <span>Peshawar, PK</span>
+            <span>Abdul Mueez</span>
+            <span>Systems & Cloud</span>
           </figcaption>
         </figure>
         <div className="profile-text">
-          <h2 className="folio-display" id="profile-heading">Profile</h2>
-          <p>I'm Abdul-Mueez Shahid, a computer science student in Peshawar.</p>
-          <p>I like tracing an application from the interface back to the systems that run it. Outside my coursework, I lead the AWS Student Builder Group.</p>
+          <h2 className="folio-display" id="profile-heading">
+            <span className="ember-text">PRO</span>FILE
+          </h2>
+          <p>I'm Abdul Mueez, a computer science student.</p>
+          <p>
+            I like tracing an application from the interface back to the systems that run it. Outside my coursework, I lead the{' '}
+            <span className="ember-text">AWS</span> Student Builder Group.
+          </p>
           <dl>
             <div>
               <dt>Education</dt>
-              <dd>BS Computer Science<br /><span>FAST-NUCES Peshawar · Batch of 2024</span></dd>
+              <dd>BS Computer Science<br /><span><span className="ember-text">FAST-NUCES</span> · Batch of 2024</span></dd>
             </div>
           </dl>
           <a className="folio-link" href={cvPdf} download="abdulmueez-cv.pdf">
