@@ -18,6 +18,7 @@ export function Profile() {
             <canvas
               ref={canvasRef}
               className="gather-overlay"
+              style={{ opacity: 1, backfaceVisibility: 'hidden' }}
               aria-hidden="true"
             />
           </div>

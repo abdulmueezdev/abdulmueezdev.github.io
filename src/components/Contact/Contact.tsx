@@ -17,11 +17,18 @@ const SKIPER26_GIF_CSS = `
 
 ::view-transition-new(root) {
   mask: url('${SKIPER26_GIF_1_URL}') center / 0 no-repeat;
-  animation: contact-gif-scale 3s both;
+  mask-mode: alpha;
+  animation: contact-gif-scale 3s cubic-bezier(0.7, 0, 0.84, 0) both;
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+  z-index: 2;
 }
 
 ::view-transition-old(root) {
-  animation: contact-gif-scale 3s both;
+  animation: none;
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+  z-index: 1;
 }
 
 @keyframes contact-gif-scale {
@@ -48,11 +55,16 @@ const SKIPER26_CIRCLE_CLOSE_CSS = `
 
 ::view-transition-new(root) {
   animation: contact-circle-close 1.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+  z-index: 2;
 }
 
 ::view-transition-old(root) {
   animation: none;
-  z-index: -1;
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+  z-index: 1;
 }
 
 @keyframes contact-circle-close {
@@ -99,7 +111,35 @@ export function Contact() {
   const gifPreloadedRef = useRef(false)
   const headingTriggerRef = useRef<HTMLButtonElement>(null)
   const activeTransitionRef = useRef<ViewTransition | null>(null)
+  const scrollLockRef = useRef<{ overflow: string; paddingRight: string } | null>(null)
   const lenis = useLenis()
+
+  const lockRootScroll = useCallback(() => {
+    lenis?.stop()
+    if (!scrollLockRef.current) {
+      scrollLockRef.current = {
+        overflow: document.body.style.overflow,
+        paddingRight: document.body.style.paddingRight,
+      }
+      const gap = Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+      if (gap > 0) {
+        document.body.style.paddingRight = `${gap}px`
+      }
+      document.body.style.overflow = 'hidden'
+    }
+  }, [lenis])
+
+  const unlockRootScroll = useCallback(() => {
+    if (scrollLockRef.current) {
+      document.body.style.overflow = scrollLockRef.current.overflow
+      document.body.style.paddingRight = scrollLockRef.current.paddingRight
+      scrollLockRef.current = null
+    } else {
+      document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
+    }
+    lenis?.start()
+  }, [lenis])
 
   const preloadGif = useCallback(() => {
     if (typeof window === 'undefined' || gifPreloadedRef.current) return
@@ -120,8 +160,9 @@ export function Contact() {
       activeTransitionRef.current?.skipTransition?.()
       activeTransitionRef.current = null
       document.getElementById(VT_STYLE_ID)?.remove()
+      unlockRootScroll()
     }
-  }, [preloadGif])
+  }, [preloadGif, unlockRootScroll])
 
   const runViewTransition = useCallback(
     (css: string, commitDom: () => void, afterFinish?: () => void) => {
@@ -143,6 +184,7 @@ export function Contact() {
   )
 
   const openContact = useCallback(() => {
+    lockRootScroll()
     const canTransition =
       supportsViewTransitions() && !supportsReducedMotion() && !gifFailedRef.current
 
@@ -156,12 +198,11 @@ export function Contact() {
       setUsedViewTransition(true)
       setIsContactOpen(true)
     })
-  }, [runViewTransition])
+  }, [lockRootScroll, runViewTransition])
 
   const closeContact = useCallback(() => {
     const restoreScrollAndFocus = () => {
-      document.body.style.overflow = ''
-      lenis?.start()
+      unlockRootScroll()
       requestAnimationFrame(() => {
         headingTriggerRef.current?.focus({ preventScroll: true })
       })
@@ -186,10 +227,10 @@ export function Contact() {
       },
       () => {
         setUsedViewTransition(false)
+        restoreScrollAndFocus()
       },
     )
-    restoreScrollAndFocus()
-  }, [lenis, runViewTransition])
+  }, [runViewTransition, unlockRootScroll])
 
   const handleCopy = useCallback(async () => {
     const address = 'abdulmueezshahid550@gmail.com'

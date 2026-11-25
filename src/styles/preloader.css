@@ -1,0 +1,57 @@
+.preloader-curtain {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #161616;
+  pointer-events: all;
+  will-change: transform;
+}
+
+.preloader-curtain.is-unmeasured {
+  background: #f8f8f8;
+}
+
+.preloader-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 300px);
+  pointer-events: none;
+}
+
+.preloader-svg path {
+  fill: #f8f8f8;
+}
+
+.preloader-word {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding-inline: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.68rem;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: clamp(2.1rem, 4.5vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: #161616;
+  user-select: none;
+}
+
+.preloader-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff6436;
+  flex: none;
+}

@@ -72,12 +72,17 @@ export function HoverExpandServices() {
     return () => mql.removeEventListener('change', handler)
   }, [])
 
-  const collapsedWidth = isMobile ? '2.25rem' : '4.8rem'
-  const expandedWidth = isMobile ? '11.5rem' : '22rem'
+  const collapsedWidth = isMobile ? '2rem' : '4.8rem'
+  const expandedWidth = isMobile ? '10.5rem' : '22rem'
   const cardHeight = isMobile ? '18rem' : '24rem'
 
   return (
-    <div className="hover-expand-container" role="region" aria-label="Engineered Services Visual Strip">
+    <div
+      className="hover-expand-container"
+      style={{ contain: 'layout paint' }}
+      role="region"
+      aria-label="Engineered Services Visual Strip"
+    >
       <div className="hover-expand-track">
         {SERVICES.map((service, index) => {
           const isActive = activeImage === index

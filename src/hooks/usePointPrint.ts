@@ -94,6 +94,7 @@ export function useGatherPortrait() {
     painted: false,
     reducedMotion: false,
     finePointer: false,
+    lastPointerMs: 0,
     trackers: [] as TrackerNode[],
     tick: 0,
     settleCount: 0,
@@ -182,6 +183,14 @@ export function useGatherPortrait() {
         } else {
           s.settleCount = 0
         }
+      } else if (performance.now() - s.lastPointerMs > 220 && activeMovement < s.count * 0.012) {
+        s.settleCount++
+        if (s.settleCount > 10) {
+          s.animating = false
+          s.settleCount = 0
+        }
+      } else {
+        s.settleCount = 0
       }
     }
 
@@ -368,22 +377,21 @@ export function useGatherPortrait() {
     const s = stateRef.current
     if (!mount || !canvas || !img.naturalWidth) return
 
-    const w = Math.round(mount.clientWidth || 440)
-    const h = Math.round(mount.clientHeight || Math.round(w / 0.91))
+    const rect = mount.getBoundingClientRect()
+    const w = Math.round(rect.width || mount.clientWidth || 440)
+    const h = Math.round(rect.height || mount.clientHeight || Math.round(w / 0.91))
     if (!w || !h) return
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const cw = Math.round(w * dpr)
     const ch = Math.round(h * dpr)
 
-    // Guard against redundant sub-pixel ResizeObserver calls that would otherwise wipe the canvas
+    // Ignore sub-pixel scroll/zoom layout jitter (<2px) to prevent canvas wipe flicker
     if (
       s.count > 0 &&
-      s.width === w &&
-      s.height === h &&
-      s.dpr === dpr &&
-      canvas.width === cw &&
-      canvas.height === ch
+      Math.abs(s.width - w) < 2 &&
+      Math.abs(s.height - h) < 2 &&
+      s.dpr === dpr
     ) {
       return
     }
@@ -565,21 +573,29 @@ export function useGatherPortrait() {
       img.onload = onImageLoaded
     }
 
-    const onPointerMove = (e: PointerEvent) => {
+    const wakeFromPointer = (e: PointerEvent) => {
+      if (!s.finePointer || s.reducedMotion) return
       const bounds = mount.getBoundingClientRect()
       s.pointer = { x: e.clientX - bounds.left, y: e.clientY - bounds.top }
+      s.lastPointerMs = performance.now()
+      s.settleCount = 0
       s.animating = true
       scheduleRender()
     }
 
     const onPointerLeave = () => {
       s.pointer = null
-      s.animating = true
-      scheduleRender()
+      if (!s.reducedMotion && s.count > 0) {
+        s.settleCount = 0
+        s.animating = true
+        scheduleRender()
+      }
     }
 
-    mount.addEventListener('pointermove', onPointerMove, { passive: true })
+    mount.addEventListener('pointerenter', wakeFromPointer, { passive: true })
+    mount.addEventListener('pointermove', wakeFromPointer, { passive: true })
     mount.addEventListener('pointerleave', onPointerLeave, { passive: true })
+    mount.addEventListener('pointercancel', onPointerLeave, { passive: true })
 
     const onVisibilityChange = () => {
       if (document.hidden && s.frame) {
@@ -596,15 +612,26 @@ export function useGatherPortrait() {
       if (s.visible) {
         if (s.count === 0 && img && img.naturalWidth) {
           prepare(img)
-        } else if (!s.painted || s.animating) {
+        } else if (!s.painted) {
           renderGather()
+        } else if (s.animating) {
+          scheduleRender()
         }
       } else {
         if (s.frame) {
           cancelAnimationFrame(s.frame)
           s.frame = 0
         }
-        s.animating = false
+        s.pointer = null
+        s.settleCount = 0
+        if (s.animating && s.count > 0) {
+          s.x.set(s.baseX)
+          s.y.set(s.baseY)
+          s.vx.fill(0)
+          s.vy.fill(0)
+          s.animating = false
+          renderGather()
+        }
       }
     })
     io.observe(mount)
@@ -616,9 +643,7 @@ export function useGatherPortrait() {
       const h = Math.round(entry?.contentRect.height || mount.clientHeight || 0)
       if (!w || !h) return
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const cw = Math.round(w * dpr)
-      const ch = Math.round(h * dpr)
-      if (s.count > 0 && canvas.width === cw && canvas.height === ch && s.width === w && s.height === h) {
+      if (s.count > 0 && Math.abs(s.width - w) < 2 && Math.abs(s.height - h) < 2 && s.dpr === dpr) {
         return
       }
       prepare(img)
@@ -626,8 +651,10 @@ export function useGatherPortrait() {
     ro.observe(mount)
 
     return () => {
-      mount.removeEventListener('pointermove', onPointerMove)
+      mount.removeEventListener('pointerenter', wakeFromPointer)
+      mount.removeEventListener('pointermove', wakeFromPointer)
       mount.removeEventListener('pointerleave', onPointerLeave)
+      mount.removeEventListener('pointercancel', onPointerLeave)
       motionPref.removeEventListener('change', onMediaChange)
       pointerPref.removeEventListener('change', onMediaChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)

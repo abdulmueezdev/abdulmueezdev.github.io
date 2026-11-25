@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
-import { useLenis } from 'lenis/react'
 import type { SakugaProgressElement } from '../../types/sakuga'
 import { RallyWordmarkBackground } from './RallyWordmarkBackground'
 
@@ -93,7 +92,6 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
   const closeTimeoutRef = useRef<number | null>(null)
 
   const shouldReduceMotion = Boolean(useReducedMotion())
-  const lenis = useLenis()
 
   const triggerSequencedClose = useCallback(() => {
     if (isClosingRef.current) return
@@ -129,10 +127,6 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
       }
       return
     }
-    lenis?.stop()
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
     if (overlayRef.current) {
       overlayRef.current.scrollTop = 0
     }
@@ -143,10 +137,8 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
 
     return () => {
       cancelAnimationFrame(focusRaf)
-      document.body.style.overflow = prevOverflow
-      lenis?.start()
     }
-  }, [isOpen, lenis])
+  }, [isOpen])
 
   // Transition to confirmation ONLY after <sakuga-progress> dispatches sakuga:done
   useEffect(() => {
@@ -404,7 +396,7 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
       aria-labelledby="contact-page-heading"
       data-cursor-theme="ember"
       data-lenis-prevent
-      initial={skipFadeOnEnter ? { opacity: 1 } : { opacity: 0 }}
+      initial={skipFadeOnEnter ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={supportsViewTransitionClose || shouldReduceMotion ? undefined : { opacity: 0 }}
       transition={skipFadeOnEnter ? { duration: 0 } : { duration: 0.24, ease: ENTER_EASE }}
@@ -417,10 +409,10 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
       <div className="contact-page-inner">
             <motion.header
               className="contact-page-topbar"
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -10 }}
+              initial={skipFadeOnEnter ? false : { opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={
-                shouldReduceMotion
+                skipFadeOnEnter
                   ? { duration: 0 }
                   : { duration: 0.42, delay: staggerBase, ease: ENTER_EASE }
               }
@@ -458,10 +450,10 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
                 <h2 className="contact-page-title" id="contact-page-heading">
                   <motion.span
                     className="contact-page-title-line"
-                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+                    initial={skipFadeOnEnter ? false : { opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={
-                      shouldReduceMotion
+                      skipFadeOnEnter
                         ? { duration: 0 }
                         : { duration: 0.48, delay: staggerBase + 0.06, ease: ENTER_EASE }
                     }
@@ -470,10 +462,10 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
                   </motion.span>
                   <motion.span
                     className="contact-page-title-line ember-text"
-                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 24 }}
+                    initial={skipFadeOnEnter ? false : { opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={
-                      shouldReduceMotion
+                      skipFadeOnEnter
                         ? { duration: 0 }
                         : { duration: 0.48, delay: staggerBase + 0.14, ease: ENTER_EASE }
                     }
@@ -483,10 +475,10 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
                 </h2>
                 <motion.p
                   className="contact-page-lead"
-                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 14 }}
+                  initial={skipFadeOnEnter ? false : { opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={
-                    shouldReduceMotion
+                    skipFadeOnEnter
                       ? { duration: 0 }
                       : { duration: 0.46, delay: staggerBase + 0.22, ease: ENTER_EASE }
                   }
@@ -496,10 +488,10 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
 
                 <motion.dl
                   className="contact-page-meta-list"
-                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 14 }}
+                  initial={skipFadeOnEnter ? false : { opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={
-                    shouldReduceMotion
+                    skipFadeOnEnter
                       ? { duration: 0 }
                       : { duration: 0.46, delay: staggerBase + 0.28, ease: ENTER_EASE }
                   }
@@ -521,10 +513,10 @@ export function ContactModalPage({ isOpen, usedViewTransition, onClose }: Contac
 
               <motion.div
                 className="sakuga-form-card"
-                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 22, scale: 0.985 }}
+                initial={skipFadeOnEnter ? false : { opacity: 0, y: 22, scale: 0.985 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={
-                  shouldReduceMotion
+                  skipFadeOnEnter
                     ? { duration: 0 }
                     : { type: 'spring', stiffness: 320, damping: 26, delay: staggerBase + 0.18 }
                 }

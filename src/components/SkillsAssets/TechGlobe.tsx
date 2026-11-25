@@ -7,43 +7,40 @@ interface SphereNode extends TechItem {
   baseX: number
   baseY: number
   baseZ: number
-  x: number
-  y: number
-  z: number
-  scale: number
-  opacity: number
 }
 
-// Compute Fibonacci sphere distribution for uniform 3D spacing
-function initNodes(): SphereNode[] {
-  const n = TECH_ITEMS.length
-  return TECH_ITEMS.map((item, i) => {
-    const phi = Math.acos(-1 + (2 * i + 1) / n)
-    const theta = Math.sqrt(n * Math.PI) * phi
-    const baseX = Math.cos(theta) * Math.sin(phi)
-    const baseY = Math.sin(theta) * Math.sin(phi)
-    const baseZ = Math.cos(phi)
+const RADIUS_X = 165
+const RADIUS_Y = 145
 
-    return {
-      ...item,
-      baseX,
-      baseY,
-      baseZ,
-      x: baseX,
-      y: baseY,
-      z: baseZ,
-      scale: 1,
-      opacity: 1,
-    }
-  })
+const SPHERE_NODES: SphereNode[] = TECH_ITEMS.map((item, i) => {
+  const n = TECH_ITEMS.length
+  const phi = Math.acos(-1 + (2 * i + 1) / n)
+  const theta = Math.sqrt(n * Math.PI) * phi
+  return {
+    ...item,
+    baseX: Math.cos(theta) * Math.sin(phi),
+    baseY: Math.sin(theta) * Math.sin(phi),
+    baseZ: Math.cos(phi),
+  }
+})
+
+function projectNode(node: SphereNode, cosX: number, sinX: number, cosY: number, sinY: number) {
+  const x1 = node.baseX * cosY - node.baseZ * sinY
+  const z1 = node.baseZ * cosY + node.baseX * sinY
+  const y1 = node.baseY * cosX - z1 * sinX
+  const z2 = z1 * cosX + node.baseY * sinX
+  const scale = Math.max(0.72, Math.min(1.25, (z2 + 2.0) / 2.5))
+  const opacity = Math.max(0.38, Math.min(1.0, (z2 + 1.25) / 2.1))
+  return { x: x1, y: y1, z: z2, scale, opacity }
 }
 
 export function TechGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [nodes, setNodes] = useState<SphereNode[]>(initNodes)
-  const [isHovered, setIsHovered] = useState(false)
+  const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
+  const frontStateRef = useRef<boolean[]>(SPHERE_NODES.map((n) => n.baseZ > 0))
+  const isHoveredRef = useRef(false)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [isVisible, setIsVisible] = useState(true)
+  const [isVisible, setIsVisible] = useState(false)
 
   const rotRef = useRef({
     rx: 0.15,
@@ -57,7 +54,6 @@ export function TechGlobe() {
     lastY: 0,
   })
 
-  // Strict viewport-gated intersection observer: pauses RAF when off-screen to guarantee 60fps scroll
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -66,32 +62,34 @@ export function TechGlobe() {
       ([entry]) => {
         setIsVisible(entry.isIntersecting)
       },
-      { rootMargin: '100px' }
+      { rootMargin: '100px' },
     )
 
     io.observe(el)
     return () => io.disconnect()
   }, [])
 
-  // 3D rotation & projection loop (only ticks when visible and motion not reduced)
+  // Direct DOM transform writes via refs avoid 60fps React reconciliation
   useEffect(() => {
     if (!isVisible) return
 
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reducedMotion) return
+    const motionPref = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (motionPref.matches) return
 
-    let animationFrameId: number
+    let animationFrameId = 0
 
     const updateProjection = () => {
-      const rot = rotRef.current
+      if (document.hidden) {
+        animationFrameId = requestAnimationFrame(updateProjection)
+        return
+      }
 
+      const rot = rotRef.current
       if (!rot.isDragging) {
-        // Slow rotation when hovering to facilitate reading and cursor interaction
-        const speedMultiplier = isHovered ? 0.2 : 1
+        const speedMultiplier = isHoveredRef.current ? 0.2 : 1
         rot.rx += rot.vx * speedMultiplier
         rot.ry += rot.vy * speedMultiplier
 
-        // Momentum inertia decay
         rot.vx *= 0.96
         rot.vy *= 0.96
         if (Math.abs(rot.vx) < 0.001) rot.vx = 0.0012
@@ -103,39 +101,33 @@ export function TechGlobe() {
       const cosY = Math.cos(rot.ry)
       const sinY = Math.sin(rot.ry)
 
-      setNodes((prevNodes) =>
-        prevNodes.map((node) => {
-          // Rotate around Y axis
-          const x1 = node.baseX * cosY - node.baseZ * sinY
-          const z1 = node.baseZ * cosY + node.baseX * sinY
+      for (let i = 0; i < SPHERE_NODES.length; i++) {
+        const el = nodeRefs.current[i]
+        if (!el) continue
 
-          // Rotate around X axis
-          const y1 = node.baseY * cosX - z1 * sinX
-          const z2 = z1 * cosX + node.baseY * sinX
+        const { x, y, z, scale, opacity } = projectNode(SPHERE_NODES[i], cosX, sinX, cosY, sinY)
+        const posX = x * RADIUS_X
+        const posY = y * RADIUS_Y
 
-          // Perspective depth calculation for 3D Icon Cloud
-          const scale = Math.max(0.72, Math.min(1.25, (z2 + 2.0) / 2.5))
-          const opacity = Math.max(0.38, Math.min(1.0, (z2 + 1.25) / 2.1))
+        el.style.transform = `translate3d(${posX.toFixed(2)}px, ${posY.toFixed(2)}px, 0) scale(${scale.toFixed(3)})`
+        el.style.opacity = opacity.toFixed(3)
+        el.style.zIndex = String(Math.round((z + 1.5) * 50))
 
-          return {
-            ...node,
-            x: x1,
-            y: y1,
-            z: z2,
-            scale,
-            opacity,
-          }
-        })
-      )
+        const isFront = z > 0
+        if (frontStateRef.current[i] !== isFront) {
+          frontStateRef.current[i] = isFront
+          el.classList.toggle('is-front', isFront)
+          el.classList.toggle('is-back', !isFront)
+        }
+      }
 
       animationFrameId = requestAnimationFrame(updateProjection)
     }
 
     animationFrameId = requestAnimationFrame(updateProjection)
     return () => cancelAnimationFrame(animationFrameId)
-  }, [isVisible, isHovered])
+  }, [isVisible])
 
-  // Pointer drag momentum interaction
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const rot = rotRef.current
     rot.isDragging = true
@@ -181,38 +173,40 @@ export function TechGlobe() {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        isHoveredRef.current = true
+      }}
       onMouseLeave={() => {
-        setIsHovered(false)
+        isHoveredRef.current = false
         setActiveId(null)
       }}
       role="region"
       aria-label="3D Interactive Technology Logo Cloud"
     >
       <div className="tech-icon-cloud-scene">
-        {/* Subtle geometric orbital guide rings */}
         <div className="tech-cloud-ring ring-h" aria-hidden="true" />
         <div className="tech-cloud-ring ring-v" aria-hidden="true" />
 
-        {/* 12 Crisp Official Brand Logo Nodes Floating in 3D Perspective */}
-        {nodes.map((node) => {
-          const isFront = node.z > 0
+        {SPHERE_NODES.map((node, index) => {
+          const cosX = Math.cos(0.15)
+          const sinX = Math.sin(0.15)
+          const cosY = Math.cos(0.25)
+          const sinY = Math.sin(0.25)
+          const initial = projectNode(node, cosX, sinX, cosY, sinY)
+          const isFront = initial.z > 0
           const isActive = activeId === node.id
-
-          // Spherical radius scaling
-          const radiusX = 165
-          const radiusY = 145
-          const posX = node.x * radiusX
-          const posY = node.y * radiusY
 
           return (
             <div
               key={node.id}
+              ref={(el) => {
+                nodeRefs.current[index] = el
+              }}
               className={`tech-cloud-node${isFront ? ' is-front' : ' is-back'}${isActive ? ' is-active' : ''}`}
               style={{
-                transform: `translate3d(${posX}px, ${posY}px, 0) scale(${node.scale})`,
-                opacity: node.opacity,
-                zIndex: Math.round((node.z + 1.5) * 50),
+                transform: `translate3d(${(initial.x * RADIUS_X).toFixed(2)}px, ${(initial.y * RADIUS_Y).toFixed(2)}px, 0) scale(${initial.scale.toFixed(3)})`,
+                opacity: Number(initial.opacity.toFixed(3)),
+                zIndex: Math.round((initial.z + 1.5) * 50),
               }}
             >
               <CursorCard
@@ -224,11 +218,11 @@ export function TechGlobe() {
                   type="button"
                   className="tech-logo-btn"
                   onFocus={() => {
-                    setIsHovered(true)
+                    isHoveredRef.current = true
                     setActiveId(node.id)
                   }}
                   onBlur={() => {
-                    setIsHovered(false)
+                    isHoveredRef.current = false
                     setActiveId(null)
                   }}
                   aria-label={`${node.name} — ${node.category}: ${node.description}`}
