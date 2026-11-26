@@ -10,14 +10,28 @@ export function useHeroParallax() {
     if (!scene || !stage) return
 
     const motionPreference = matchMedia('(prefers-reduced-motion: reduce)')
+    const mobileQuery = matchMedia('(max-width: 768px), (pointer: coarse)')
     let start = 0
     let travel = 0
     let frame = 0
     let previous = -1
 
+    function reset() {
+      scene!.style.setProperty('--type-y', '0px')
+      scene!.style.setProperty('--object-y', '0px')
+      scene!.style.setProperty('--stage-opacity', '1')
+    }
+
     function update() {
       frame = 0
-      const distance = motionPreference.matches ? 0 : Math.min(travel, Math.max(0, window.scrollY - start))
+      if (mobileQuery.matches || motionPreference.matches) {
+        if (previous !== 0) {
+          previous = 0
+          reset()
+        }
+        return
+      }
+      const distance = Math.min(travel, Math.max(0, window.scrollY - start))
       const progress = distance / travel
       if (progress === previous) return
       previous = progress
@@ -39,7 +53,8 @@ export function useHeroParallax() {
 
     addEventListener('scroll', schedule, { passive: true })
     addEventListener('resize', measure)
-    motionPreference.addEventListener('change', schedule)
+    motionPreference.addEventListener('change', measure)
+    mobileQuery.addEventListener('change', measure)
     const observer = new ResizeObserver(measure)
     observer.observe(scene)
     measure()
@@ -47,7 +62,8 @@ export function useHeroParallax() {
     return () => {
       removeEventListener('scroll', schedule)
       removeEventListener('resize', measure)
-      motionPreference.removeEventListener('change', schedule)
+      motionPreference.removeEventListener('change', measure)
+      mobileQuery.removeEventListener('change', measure)
       observer.disconnect()
       cancelAnimationFrame(frame)
     }

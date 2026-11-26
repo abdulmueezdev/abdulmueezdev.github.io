@@ -411,7 +411,6 @@ export function ContactModalPage({
   const skipFadeOnEnter = usedViewTransition || shouldReduceMotion
   const supportsViewTransitionClose =
     !shouldReduceMotion &&
-    !isTouchOrMobile &&
     typeof document !== 'undefined' &&
     'startViewTransition' in document &&
     typeof document.startViewTransition === 'function'
@@ -426,38 +425,24 @@ export function ContactModalPage({
       tabIndex={-1}
       data-cursor-theme="ember"
       data-lenis-prevent
-      initial={
-        skipFadeOnEnter
-          ? false
-          : isTouchOrMobile
-            ? { opacity: 0, clipPath: 'circle(0% at 50% 90%)' }
-            : { opacity: 0 }
-      }
+      initial={skipFadeOnEnter ? false : { opacity: 0, clipPath: 'circle(0% at 50% 90%)' }}
       animate={
-        isTouchOrMobile && !shouldReduceMotion
-          ? { opacity: 1, clipPath: 'circle(150% at 50% 90%)' }
-          : { opacity: 1 }
+        shouldReduceMotion || usedViewTransition
+          ? { opacity: 1 }
+          : { opacity: 1, clipPath: 'circle(150% at 50% 50%)' }
       }
       exit={
         supportsViewTransitionClose
           ? undefined
           : shouldReduceMotion
             ? { opacity: 0, transition: { duration: 0 } }
-            : isTouchOrMobile
-              ? {
-                  opacity: 0,
-                  clipPath: 'circle(0% at 90% 6%)',
-                  transition: { duration: 0.3, ease: [0.32, 0, 0.67, 0] },
-                }
-              : { opacity: 0 }
+            : {
+                opacity: 0,
+                clipPath: 'circle(0% at 50% 50%)',
+                transition: { duration: 0.55, ease: ENTER_EASE },
+              }
       }
-      transition={
-        skipFadeOnEnter
-          ? { duration: 0 }
-          : isTouchOrMobile
-            ? { duration: 0.4, ease: ENTER_EASE }
-            : { duration: 0.24, ease: ENTER_EASE }
-      }
+      transition={skipFadeOnEnter ? { duration: 0 } : { duration: 0.55, ease: ENTER_EASE }}
     >
       <RallyWordmarkBackground
         isOpen={isOpen}

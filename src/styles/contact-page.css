@@ -117,6 +117,7 @@
 
 .contact-close-btn {
   position: relative;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -132,6 +133,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   cursor: pointer;
+  touch-action: manipulation;
   transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.12s ease, color 0.12s ease;
 }
 

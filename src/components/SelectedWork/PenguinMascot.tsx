@@ -96,23 +96,15 @@ export function PenguinMascot({
   const [reaction, setReaction] = useState<Reaction | null>(null)
 
   useEffect(() => {
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-      return
-    }
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (reducedMotion.matches) return
 
     let sector = -1
     let pointer: { x: number; y: number } | null = null
+    let lastTouchMs = 0
+    let rafId = 0
 
-    const aim = () => {
-      const button = buttonRef.current
-      if (!button || !pointer) {
-        return
-      }
-
-      const box = button.getBoundingClientRect()
-      const dx = pointer.x - (box.left + box.width / 2)
-      const dy = pointer.y - (box.top + box.height / 2)
-
+    const applyDirection = (dx: number, dy: number) => {
       if (Math.hypot(dx, dy) < DEAD_ZONE) {
         sector = -1
         setDirection('center')
@@ -128,17 +120,68 @@ export function PenguinMascot({
       setDirection(CLOCKWISE[sector])
     }
 
+    const aim = () => {
+      rafId = 0
+      const button = buttonRef.current
+      if (!button || reducedMotion.matches) return
+
+      const box = button.getBoundingClientRect()
+      const cx = box.left + box.width / 2
+      const cy = box.top + box.height / 2
+
+      if (pointer && performance.now() - lastTouchMs < 1400) {
+        applyDirection(pointer.x - cx, pointer.y - cy)
+        return
+      }
+
+      if (pointer && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        applyDirection(pointer.x - cx, pointer.y - cy)
+        return
+      }
+
+      // Scroll-aware look target toward viewport focus on coarse/idle screens
+      const targetX = window.innerWidth * 0.42
+      const targetY = window.innerHeight * 0.5
+      applyDirection(targetX - cx, targetY - cy)
+    }
+
+    const scheduleAim = () => {
+      if (!rafId) rafId = requestAnimationFrame(aim)
+    }
+
+    const updatePointer = (x: number, y: number, fromTouch: boolean) => {
+      pointer = { x, y }
+      if (fromTouch) lastTouchMs = performance.now()
+      scheduleAim()
+    }
+
     const onPointerMove = (event: PointerEvent) => {
-      pointer = { x: event.clientX, y: event.clientY }
-      aim()
+      updatePointer(event.clientX, event.clientY, event.pointerType !== 'mouse')
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      updatePointer(event.clientX, event.clientY, event.pointerType !== 'mouse')
+    }
+
+    const onTouch = (event: TouchEvent) => {
+      const touch = event.touches[0]
+      if (touch) updatePointer(touch.clientX, touch.clientY, true)
     }
 
     window.addEventListener('pointermove', onPointerMove, { passive: true })
-    window.addEventListener('scroll', aim, { passive: true })
+    window.addEventListener('pointerdown', onPointerDown, { passive: true })
+    window.addEventListener('touchstart', onTouch, { passive: true })
+    window.addEventListener('touchmove', onTouch, { passive: true })
+    window.addEventListener('scroll', scheduleAim, { passive: true })
+    scheduleAim()
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId)
       window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('scroll', aim)
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('touchmove', onTouch)
+      window.removeEventListener('scroll', scheduleAim)
     }
   }, [])
 
@@ -186,6 +229,7 @@ export function PenguinMascot({
       ref={buttonRef}
       type="button"
       onClick={boop}
+      data-look={direction}
       aria-label={`Boop the ${label}`}
       className={`cncf-mascot-btn ${className || ''}`}
       style={{
@@ -200,6 +244,7 @@ export function PenguinMascot({
         appearance: 'none',
         cursor: 'pointer',
         userSelect: 'none',
+        touchAction: 'manipulation',
       }}
     >
       <span

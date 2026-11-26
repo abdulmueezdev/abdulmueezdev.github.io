@@ -92,13 +92,6 @@ function supportsViewTransitions(): boolean {
   )
 }
 
-function prefersMobileMotionFallback(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.matchMedia('(hover: none), (pointer: coarse), (max-width: 768px)').matches
-  )
-}
-
 function setViewTransitionStyles(css: string) {
   let styleEl = document.getElementById(VT_STYLE_ID) as HTMLStyleElement | null
   if (!styleEl) {
@@ -202,8 +195,7 @@ export function Contact() {
     const canTransition =
       supportsViewTransitions() &&
       !supportsReducedMotion() &&
-      !gifFailedRef.current &&
-      !prefersMobileMotionFallback()
+      !gifFailedRef.current
 
     if (!canTransition) {
       setUsedViewTransition(false)
@@ -218,10 +210,7 @@ export function Contact() {
   }, [lockRootScroll, runViewTransition])
 
   const closeContact = useCallback(() => {
-    const canTransition =
-      supportsViewTransitions() &&
-      !supportsReducedMotion() &&
-      !prefersMobileMotionFallback()
+    const canTransition = supportsViewTransitions() && !supportsReducedMotion()
     if (!canTransition) {
       activeTransitionRef.current?.skipTransition?.()
       activeTransitionRef.current = null

@@ -18,7 +18,6 @@ export function SelectedWork() {
   const [activeTab, setActiveTab] = useState(0)
   const [bookOpen, setBookOpen] = useState(false)
   const [leadMapOpen, setLeadMapOpen] = useState(false)
-  const lastHoverTimeRef = useRef(0)
   const { setPlateRef } = useArtworkParallax()
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const shouldReduceMotion = useReducedMotion()
@@ -43,15 +42,13 @@ export function SelectedWork() {
     tabRefs.current[next]?.focus()
   }, [])
 
-  const handleBookHoverEnter = useCallback(() => {
-    const now = Date.now()
-    if (now - lastHoverTimeRef.current < 400) return
-    lastHoverTimeRef.current = now
+  const handlePlatePointerEnter = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse') return
     setBookOpen(prev => !prev)
   }, [])
 
-  const toggleBook = useCallback(() => {
-    lastHoverTimeRef.current = Date.now()
+  const toggleBook = useCallback((event?: React.MouseEvent) => {
+    event?.stopPropagation()
     setBookOpen(prev => !prev)
   }, [])
 
@@ -123,10 +120,10 @@ export function SelectedWork() {
                 <div
                   className={`project-plate plate-kafka${bookOpen ? ' book-open' : ''}`}
                   ref={setPlateRef(0)}
-                  onMouseEnter={handleBookHoverEnter}
+                  onPointerEnter={handlePlatePointerEnter}
                 >
                   <div className="kafka-type" aria-hidden="true">KAFKA</div>
-                  <div className="book-prop" aria-hidden="true">
+                  <div className="book-prop" onClick={toggleBook} aria-hidden="true">
                     <div className="book-leaves">
                       <span>PRAGUE, 1922</span>
                       <strong>Franz<br />Kafka</strong>
