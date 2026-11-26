@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
-import { createPortal, flushSync } from 'react-dom'
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
+import { flushSync } from 'react-dom'
+import { motion, AnimatePresence, useReducedMotion, useIsPresent } from 'motion/react'
 import type { SakugaProgressElement } from '../../types/sakuga'
 import { RallyWordmarkBackground } from './RallyWordmarkBackground'
 
@@ -8,7 +8,6 @@ interface ContactModalPageProps {
   isOpen: boolean
   usedViewTransition: boolean
   onClose: () => void
-  onAfterClose?: () => void
 }
 
 interface FormValues {
@@ -32,7 +31,8 @@ const INITIAL_VALUES: FormValues = { name: '', email: '', message: '' }
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const ENTER_EASE = [0.22, 1, 0.36, 1] as const
-const CLOSE_BUTTON_BURST_MS = 240
+const CLOSE_EASE = [0.4, 0, 0.2, 1] as const
+const CLOSE_BUTTON_BURST_MS = 110
 
 function validateForm(values: FormValues): FormErrors {
   const errors: FormErrors = {}
@@ -71,7 +71,6 @@ export function ContactModalPage({
   isOpen,
   usedViewTransition,
   onClose,
-  onAfterClose,
 }: ContactModalPageProps) {
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -83,11 +82,6 @@ export function ContactModalPage({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [needsActivation, setNeedsActivation] = useState(false)
   const [submitted, setSubmitted] = useState<FormValues | null>(null)
-  const [isTouchOrMobile, setIsTouchOrMobile] = useState(() =>
-    typeof window !== 'undefined'
-      ? window.matchMedia('(hover: none), (pointer: coarse), (max-width: 768px)').matches
-      : false,
-  )
 
   const overlayRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -103,23 +97,14 @@ export function ContactModalPage({
   const closeTimeoutRef = useRef<number | null>(null)
 
   const shouldReduceMotion = Boolean(useReducedMotion())
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mq = window.matchMedia('(hover: none), (pointer: coarse), (max-width: 768px)')
-    const sync = () => setIsTouchOrMobile(mq.matches)
-    sync()
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [])
+  const isPresent = useIsPresent()
 
   const triggerSequencedClose = useCallback(() => {
-    if (isClosingRef.current) return
+    if (isClosingRef.current || !isPresent) return
     if (shouldReduceMotion) {
       onClose()
       return
     }
-    const burstMs = isTouchOrMobile ? 120 : CLOSE_BUTTON_BURST_MS
     isClosingRef.current = true
     setIsClosing(true)
     if (closeTimeoutRef.current !== null) window.clearTimeout(closeTimeoutRef.current)
@@ -128,8 +113,8 @@ export function ContactModalPage({
       isClosingRef.current = false
       setIsClosing(false)
       onClose()
-    }, burstMs)
-  }, [isTouchOrMobile, onClose, shouldReduceMotion])
+    }, CLOSE_BUTTON_BURST_MS)
+  }, [isPresent, onClose, shouldReduceMotion])
 
   // Lock root scrolling cleanly while the dialog is open
   useEffect(() => {
@@ -407,15 +392,10 @@ export function ContactModalPage({
 
   if (typeof document === 'undefined') return null
 
-  const staggerBase = shouldReduceMotion ? 0 : usedViewTransition ? 0.14 : 0.04
+  const staggerBase = shouldReduceMotion ? 0 : usedViewTransition ? 0.14 : 0.08
   const skipFadeOnEnter = usedViewTransition || shouldReduceMotion
-  const supportsViewTransitionClose =
-    !shouldReduceMotion &&
-    typeof document !== 'undefined' &&
-    'startViewTransition' in document &&
-    typeof document.startViewTransition === 'function'
 
-  const overlayNode = isOpen ? (
+  return (
     <motion.div
       ref={overlayRef}
       className="contact-page-overlay"
@@ -425,24 +405,25 @@ export function ContactModalPage({
       tabIndex={-1}
       data-cursor-theme="ember"
       data-lenis-prevent
-      initial={skipFadeOnEnter ? false : { opacity: 0, clipPath: 'circle(0% at 50% 90%)' }}
+      style={usedViewTransition || shouldReduceMotion ? undefined : { willChange: 'clip-path, opacity' }}
+      initial={skipFadeOnEnter ? false : { opacity: 0, clipPath: 'circle(0% at 50% 88%)' }}
       animate={
-        shouldReduceMotion || usedViewTransition
+        usedViewTransition || shouldReduceMotion
           ? { opacity: 1 }
           : { opacity: 1, clipPath: 'circle(150% at 50% 50%)' }
       }
       exit={
-        supportsViewTransitionClose
+        usedViewTransition
           ? undefined
           : shouldReduceMotion
             ? { opacity: 0, transition: { duration: 0 } }
             : {
                 opacity: 0,
                 clipPath: 'circle(0% at 50% 50%)',
-                transition: { duration: 0.55, ease: ENTER_EASE },
+                transition: { duration: 0.45, ease: CLOSE_EASE },
               }
       }
-      transition={skipFadeOnEnter ? { duration: 0 } : { duration: 0.55, ease: ENTER_EASE }}
+      transition={skipFadeOnEnter ? { duration: 0 } : { duration: 0.6, ease: ENTER_EASE }}
     >
       <RallyWordmarkBackground
         isOpen={isOpen}
@@ -828,14 +809,5 @@ export function ContactModalPage({
             </div>
           </div>
         </motion.div>
-  ) : null
-
-  return createPortal(
-    supportsViewTransitionClose ? (
-      overlayNode
-    ) : (
-      <AnimatePresence onExitComplete={onAfterClose}>{overlayNode}</AnimatePresence>
-    ),
-    document.body,
   )
 }

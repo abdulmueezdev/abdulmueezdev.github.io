@@ -1,13 +1,24 @@
+import { motion, useReducedMotion } from 'motion/react'
 import { useGatherPortrait } from '../../hooks/usePointPrint'
 import cvPdf from '../../assets/abdulmueez-cv.pdf'
 
+const REVEAL_VIEWPORT = { once: true, amount: 'some' } as const
+const REVEAL_EASE = [0.22, 1, 0.36, 1] as const
+
 export function Profile() {
   const { canvasRef, frameRef } = useGatherPortrait()
+  const shouldReduceMotion = useReducedMotion()
 
   return (
     <section className="portrait-room" id="profile" data-cursor-theme="ember" aria-labelledby="profile-heading">
       <div className="folio-measure profile-layout">
-        <figure className="profile-photo">
+        <motion.figure
+          className="profile-photo"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 22, scale: 0.985 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.55, ease: REVEAL_EASE }}
+        >
           <div
             className="gather-frame"
             ref={frameRef}
@@ -26,8 +37,16 @@ export function Profile() {
             <span>Abdul Mueez</span>
             <span>Systems & Cloud</span>
           </figcaption>
-        </figure>
-        <div className="profile-text">
+        </motion.figure>
+        <motion.div
+          className="profile-text"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={
+            shouldReduceMotion ? { duration: 0 } : { duration: 0.55, delay: 0.08, ease: REVEAL_EASE }
+          }
+        >
           <h2 className="folio-display" id="profile-heading">
             <span className="ember-text">PRO</span>FILE
           </h2>
@@ -45,7 +64,7 @@ export function Profile() {
           <a className="folio-link" href={cvPdf} download="abdulmueez-cv.pdf">
             Download CV <span aria-hidden="true">↓</span>
           </a>
-        </div>
+        </motion.div>
       </div>
     </section>
   )

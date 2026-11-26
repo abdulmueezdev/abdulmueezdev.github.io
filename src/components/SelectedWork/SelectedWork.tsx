@@ -9,6 +9,9 @@ interface Tab {
   panelId: string
 }
 
+const REVEAL_VIEWPORT = { once: true, amount: 'some' } as const
+const REVEAL_EASE = [0.22, 1, 0.36, 1] as const
+
 const tabs: Tab[] = [
   { id: 'tab-alucard', label: 'Alucard AI', panelId: 'project-alucard' },
   { id: 'tab-cncf', label: 'CNCF Peshawar', panelId: 'project-cncf' },
@@ -55,14 +58,28 @@ export function SelectedWork() {
   return (
     <section className="work-room" id="work" data-cursor-theme="ember" aria-labelledby="work-heading">
       <div className="folio-measure">
-        <header className="work-mast">
+        <motion.header
+          className="work-mast"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.55, ease: REVEAL_EASE }}
+        >
           <h2 className="folio-display" id="work-heading">Selected work</h2>
           <a className="folio-link" href="https://github.com/abdulmueezdev">
             GitHub <span aria-hidden="true">↗</span>
           </a>
-        </header>
+        </motion.header>
 
-        <div>
+        <motion.div
+          className="folio-stage-area"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={
+            shouldReduceMotion ? { duration: 0 } : { duration: 0.55, delay: 0.06, ease: REVEAL_EASE }
+          }
+        >
           {/* Fluid Shared-Layout Tablist */}
           <div className="reel-switch" role="tablist" aria-label="Selected projects">
             {tabs.map((tab, i) => {
@@ -198,9 +215,15 @@ export function SelectedWork() {
               </motion.article>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
 
-        <div className="work-index">
+        <motion.div
+          className="work-index"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.55, ease: REVEAL_EASE }}
+        >
           <h3>Other work</h3>
           <div className="other-work-list">
             <div className={`other-work-item${leadMapOpen ? ' is-open' : ''}`}>
@@ -250,7 +273,7 @@ export function SelectedWork() {
               </AnimatePresence>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )

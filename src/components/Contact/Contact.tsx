@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { flushSync } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { useLenis } from 'lenis/react'
 import { ContactModalPage } from './ContactModalPage'
 import '../../styles/contact-page.css'
@@ -48,13 +49,20 @@ const SKIPER26_GIF_CSS = `
 `
 
 const SKIPER26_CIRCLE_CLOSE_CSS = `
+::view-transition,
+::view-transition-group(root),
+::view-transition-new(root),
+::view-transition-old(root) {
+  pointer-events: none;
+}
+
 ::view-transition-group(root) {
-  animation-duration: 1.7s;
+  animation-duration: 0.85s;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 ::view-transition-new(root) {
-  animation: contact-circle-close 1.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: contact-circle-close 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-fill-mode: both;
   mix-blend-mode: normal;
   z-index: 2;
@@ -76,6 +84,16 @@ const SKIPER26_CIRCLE_CLOSE_CSS = `
   }
 }
 `
+
+const REVEAL_VIEWPORT = { once: true, amount: 'some' } as const
+const REVEAL_EASE = [0.22, 1, 0.36, 1] as const
+
+function isMobileOrCoarse(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 768px), (pointer: coarse)').matches
+  )
+}
 
 function supportsReducedMotion(): boolean {
   return (
@@ -113,6 +131,7 @@ export function Contact() {
   const activeTransitionRef = useRef<ViewTransition | null>(null)
   const scrollLockRef = useRef<{ overflow: string; paddingRight: string } | null>(null)
   const lenis = useLenis()
+  const shouldReduceMotion = useReducedMotion()
 
   const lockRootScroll = useCallback(() => {
     lenis?.stop()
@@ -165,13 +184,20 @@ export function Contact() {
   }, [preloadGif, unlockRootScroll])
 
   const runViewTransition = useCallback(
-    (css: string, commitDom: () => void, afterFinish?: () => void) => {
+    (css: string, commitDom: () => void, afterFinish?: () => void, onReady?: () => void) => {
       activeTransitionRef.current?.skipTransition?.()
       setViewTransitionStyles(css)
       const transition = document.startViewTransition(() => {
         flushSync(commitDom)
       })
       activeTransitionRef.current = transition
+      if (onReady) {
+        transition.ready.then(() => {
+          if (activeTransitionRef.current === transition) {
+            onReady()
+          }
+        }).catch(() => {})
+      }
       transition.finished.finally(() => {
         if (activeTransitionRef.current === transition) {
           activeTransitionRef.current = null
@@ -192,12 +218,13 @@ export function Contact() {
 
   const openContact = useCallback(() => {
     lockRootScroll()
-    const canTransition =
+    const canDesktopVt =
+      !isMobileOrCoarse() &&
       supportsViewTransitions() &&
       !supportsReducedMotion() &&
       !gifFailedRef.current
 
-    if (!canTransition) {
+    if (!canDesktopVt) {
       setUsedViewTransition(false)
       setIsContactOpen(true)
       return
@@ -210,8 +237,13 @@ export function Contact() {
   }, [lockRootScroll, runViewTransition])
 
   const closeContact = useCallback(() => {
-    const canTransition = supportsViewTransitions() && !supportsReducedMotion()
-    if (!canTransition) {
+    const canDesktopVt =
+      !isMobileOrCoarse() &&
+      usedViewTransition &&
+      supportsViewTransitions() &&
+      !supportsReducedMotion()
+
+    if (!canDesktopVt) {
       activeTransitionRef.current?.skipTransition?.()
       activeTransitionRef.current = null
       document.getElementById(VT_STYLE_ID)?.remove()
@@ -220,18 +252,24 @@ export function Contact() {
       return
     }
 
+    // Unlock scroll immediately in DOM commit so wheel input works during close wipe
     runViewTransition(
       SKIPER26_CIRCLE_CLOSE_CSS,
       () => {
         setUsedViewTransition(true)
         setIsContactOpen(false)
+        unlockRootScroll()
       },
       () => {
         setUsedViewTransition(false)
-        restoreScrollAndFocus()
+      },
+      () => {
+        requestAnimationFrame(() => {
+          headingTriggerRef.current?.focus({ preventScroll: true })
+        })
       },
     )
-  }, [restoreScrollAndFocus, runViewTransition])
+  }, [runViewTransition, unlockRootScroll, usedViewTransition])
 
   const handleCopy = useCallback(async () => {
     const address = 'abdulmueezshahid550@gmail.com'
@@ -248,7 +286,13 @@ export function Contact() {
   return (
     <footer className="contact-room" id="contact" data-cursor-theme="dark" aria-labelledby="contact-heading">
       <div className="folio-measure">
-        <div className="contact-invite">
+        <motion.div
+          className="contact-invite"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.55, ease: REVEAL_EASE }}
+        >
           <h2 className="folio-display" id="contact-heading">
             <button
               ref={headingTriggerRef}
@@ -281,23 +325,50 @@ export function Contact() {
             )}
             <span className="address-status" role="status">{copyStatus}</span>
           </div>
-        </div>
-        <div className="contact-ledger">
+        </motion.div>
+        <motion.div
+          className="contact-ledger"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={
+            shouldReduceMotion ? { duration: 0 } : { duration: 0.55, delay: 0.08, ease: REVEAL_EASE }
+          }
+        >
           <nav aria-label="Social profiles">
             <a href="https://github.com/abdulmueezdev">GitHub ↗</a>
             <a href="https://www.linkedin.com/in/abdulmueezdev/">LinkedIn ↗</a>
             <a href="https://www.instagram.com/abdul.mueez.shahid/">Instagram ↗</a>
           </nav>
           <a href="#home">Back to top ↑</a>
-        </div>
+        </motion.div>
       </div>
 
-      <ContactModalPage
-        isOpen={isContactOpen}
-        usedViewTransition={usedViewTransition}
-        onClose={closeContact}
-        onAfterClose={restoreScrollAndFocus}
-      />
+      {typeof document !== 'undefined' &&
+        createPortal(
+          usedViewTransition ? (
+            isContactOpen ? (
+              <ContactModalPage
+                key="contact-modal-vt"
+                isOpen
+                usedViewTransition
+                onClose={closeContact}
+              />
+            ) : null
+          ) : (
+            <AnimatePresence onExitComplete={restoreScrollAndFocus}>
+              {isContactOpen && (
+                <ContactModalPage
+                  key="contact-modal-motion"
+                  isOpen
+                  usedViewTransition={false}
+                  onClose={closeContact}
+                />
+              )}
+            </AnimatePresence>
+          ),
+          document.body,
+        )}
     </footer>
   )
 }

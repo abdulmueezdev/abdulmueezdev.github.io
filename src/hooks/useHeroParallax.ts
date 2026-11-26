@@ -24,7 +24,7 @@ export function useHeroParallax() {
 
     function update() {
       frame = 0
-      if (mobileQuery.matches || motionPreference.matches) {
+      if (motionPreference.matches) {
         if (previous !== 0) {
           previous = 0
           reset()
@@ -35,9 +35,13 @@ export function useHeroParallax() {
       const progress = distance / travel
       if (progress === previous) return
       previous = progress
-      scene!.style.setProperty('--type-y', (distance * 0.26).toFixed(2) + 'px')
-      scene!.style.setProperty('--object-y', (-distance * 0.13).toFixed(2) + 'px')
-      scene!.style.setProperty('--stage-opacity', (1 - progress * 0.16).toFixed(3))
+      const isMobile = mobileQuery.matches
+      const typeY = isMobile ? progress * 28 : distance * 0.26
+      const objectY = isMobile ? -progress * 24 : -distance * 0.13
+      const stageOpacity = isMobile ? 1 - progress * 0.1 : 1 - progress * 0.16
+      scene!.style.setProperty('--type-y', typeY.toFixed(2) + 'px')
+      scene!.style.setProperty('--object-y', objectY.toFixed(2) + 'px')
+      scene!.style.setProperty('--stage-opacity', stageOpacity.toFixed(3))
     }
 
     function schedule() {
